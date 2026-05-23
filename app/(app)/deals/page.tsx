@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { motion } from "framer-motion"
 import { TrendingDown, SlidersHorizontal } from "lucide-react"
 import { useAuthContext } from "@/components/providers/auth-provider"
@@ -21,20 +21,17 @@ export default function DealsPage() {
   const [filterMinPct, setFilterMinPct] = useState<number>(0)
   const [sortKey, setSortKey] = useState<SortKey>("drop_percent")
 
-  const filtered = deals
-    .filter((item) => {
-      if (filterListId !== "all") {
-        // We don't have listId on deals without extra fetch; show all in this case
-      }
-      return item.priceDropPercent >= filterMinPct
-    })
-    .sort((a, b) => {
-      if (sortKey === "drop_percent") return b.priceDropPercent - a.priceDropPercent
-      if (sortKey === "drop_recent")
-        return b.lastChecked.getTime() - a.lastChecked.getTime()
-      if (sortKey === "price_asc") return a.currentPrice - b.currentPrice
-      return 0
-    })
+  const filtered = useMemo(() => {
+    return deals
+      .filter((item) => item.priceDropPercent >= filterMinPct)
+      .sort((a, b) => {
+        if (sortKey === "drop_percent") return b.priceDropPercent - a.priceDropPercent
+        if (sortKey === "drop_recent")
+          return b.lastChecked.getTime() - a.lastChecked.getTime()
+        if (sortKey === "price_asc") return a.currentPrice - b.currentPrice
+        return 0
+      })
+  }, [deals, filterMinPct, sortKey])
 
   return (
     <div className="space-y-6">

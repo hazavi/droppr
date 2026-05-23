@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import {
   ResponsiveContainer,
   AreaChart,
@@ -41,6 +42,18 @@ function CustomTooltip({ active, payload, label, currency }: CustomTooltipProps)
 }
 
 export function PriceHistoryChart({ data, currency }: PriceHistoryChartProps) {
+  const { chartData, minPrice, maxPrice, padding } = useMemo(() => {
+    const chartData = data.map((p) => ({
+      date: p.recordedAt.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      price: p.price,
+    }))
+    const prices = data.map((p) => p.price)
+    const minPrice = Math.min(...prices)
+    const maxPrice = Math.max(...prices)
+    const padding = (maxPrice - minPrice) * 0.2 || 1
+    return { chartData, minPrice, maxPrice, padding }
+  }, [data])
+
   if (data.length < 2) {
     return (
       <div className="flex h-40 items-center justify-center text-sm text-neutral-500">
@@ -48,16 +61,6 @@ export function PriceHistoryChart({ data, currency }: PriceHistoryChartProps) {
       </div>
     )
   }
-
-  const chartData = data.map((p) => ({
-    date: p.recordedAt.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-    price: p.price,
-  }))
-
-  const prices = data.map((p) => p.price)
-  const minPrice = Math.min(...prices)
-  const maxPrice = Math.max(...prices)
-  const padding = (maxPrice - minPrice) * 0.2 || 1
 
   return (
     <ResponsiveContainer width="100%" height={160}>

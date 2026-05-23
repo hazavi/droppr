@@ -14,7 +14,6 @@ import {
   onSnapshot,
   serverTimestamp,
   Timestamp,
-  type QueryConstraint,
   type Unsubscribe,
   writeBatch,
 } from "firebase/firestore"
@@ -255,7 +254,10 @@ export function subscribeToDeals(
           const listId = listDoc.id
           itemsByList[listId] = []
           itemUnsubs[listId] = onSnapshot(
-            query(collection(db, "users", uid, "lists", listId, "items"), orderBy("createdAt", "desc")),
+            query(
+              collection(db, "users", uid, "lists", listId, "items"),
+              where("onSale", "==", true)
+            ),
             (snap) => {
               itemsByList[listId] = snap.docs.map((d) => toTrackedItem(d.id, d.data() as Record<string, unknown>))
               emit()
@@ -407,15 +409,18 @@ export async function getRecentlyDropped(
   count = 6
 ): Promise<TrackedItem[]> {
   const listsSnap = await getDocs(collection(db, "users", uid, "lists"))
-  const allItems: TrackedItem[] = []
-  await Promise.all(
-    listsSnap.docs.map(async (listDoc) => {
-      const itemsSnap = await getDocs(collection(db, "users", uid, "lists", listDoc.id, "items"))
-      itemsSnap.docs.forEach((d) => allItems.push(toTrackedItem(d.id, d.data() as Record<string, unknown>)))
-    })
+  const perList = await Promise.all(
+    listsSnap.docs.map((listDoc) =>
+      getDocs(
+        query(
+          collection(db, "users", uid, "lists", listDoc.id, "items"),
+          where("onSale", "==", true)
+        )
+      )
+    )
   )
-  return allItems
-    .filter((item) => item.onSale)
+  return perList
+    .flatMap((snap) => snap.docs.map((d) => toTrackedItem(d.id, d.data() as Record<string, unknown>)))
     .sort((a, b) => b.lastChecked.getTime() - a.lastChecked.getTime())
     .slice(0, count)
 }
@@ -425,14 +430,19 @@ export async function getRecentlyAdded(
   count = 6
 ): Promise<TrackedItem[]> {
   const listsSnap = await getDocs(collection(db, "users", uid, "lists"))
-  const allItems: TrackedItem[] = []
-  await Promise.all(
-    listsSnap.docs.map(async (listDoc) => {
-      const itemsSnap = await getDocs(collection(db, "users", uid, "lists", listDoc.id, "items"))
-      itemsSnap.docs.forEach((d) => allItems.push(toTrackedItem(d.id, d.data() as Record<string, unknown>)))
-    })
+  const perList = await Promise.all(
+    listsSnap.docs.map((listDoc) =>
+      getDocs(
+        query(
+          collection(db, "users", uid, "lists", listDoc.id, "items"),
+          orderBy("createdAt", "desc"),
+          limit(count)
+        )
+      )
+    )
   )
-  return allItems
+  return perList
+    .flatMap((snap) => snap.docs.map((d) => toTrackedItem(d.id, d.data() as Record<string, unknown>)))
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     .slice(0, count)
 }
@@ -455,20 +465,18 @@ export async function getAllItemsForUser(
   uid: string
 ): Promise<Array<TrackedItem & { listId: string }>> {
   const listsSnap = await getDocs(collection(db, "users", uid, "lists"))
-  const items: Array<TrackedItem & { listId: string }> = []
-
-  for (const listDoc of listsSnap.docs) {
-    const itemsSnap = await getDocs(
-      collection(db, "users", uid, "lists", listDoc.id, "items")
-    )
-    itemsSnap.docs.forEach((d) => {
-      items.push({
+  const perList = await Promise.all(
+    listsSnap.docs.map(async (listDoc) => {
+      const snap = await getDocs(
+        collection(db, "users", uid, "lists", listDoc.id, "items")
+      )
+      return snap.docs.map((d) => ({
         ...toTrackedItem(d.id, d.data() as Record<string, unknown>),
         listId: listDoc.id,
-      })
+      }))
     })
-  }
-  return items
+  )
+  return perList.flat()
 }
 
 export async function updateItemPrice(

@@ -1,5 +1,6 @@
 "use client"
 
+import { memo } from "react"
 import { motion } from "framer-motion"
 import { TrendingDown, ExternalLink, Clock } from "lucide-react"
 import Image from "next/image"
@@ -24,13 +25,15 @@ interface ProductCardProps {
   onDelete?: (id: string) => void
   isSelected?: boolean
   onSelect?: (id: string) => void
+  priority?: boolean
 }
 
-export function ProductCard({
+export const ProductCard = memo(function ProductCard({
   item,
   listId,
   isSelected,
   onSelect,
+  priority = false,
 }: ProductCardProps) {
   const hasDrop = item.priceDrop > 0
 
@@ -78,6 +81,7 @@ export function ProductCard({
               src={item.image}
               alt={item.name}
               fill
+              priority={priority}
               className="object-cover transition-transform duration-300 group-hover:scale-105"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             />
@@ -144,4 +148,4 @@ export function ProductCard({
       </motion.div>
     </motion.div>
   )
-}
+})
