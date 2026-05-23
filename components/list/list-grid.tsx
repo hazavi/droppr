@@ -9,6 +9,8 @@ const containerVariants = {
   visible: { transition: { staggerChildren: 0.05 } },
 }
 
+const SKELETON_KEYS = Array.from({ length: 4 }, (_, i) => i)
+
 function ListCardSkeleton() {
   return (
     <div className="flex items-center gap-4 rounded-xl border border-white/10 bg-white/5 p-5 animate-pulse">
@@ -31,7 +33,7 @@ export function ListGrid({ lists, loading, emptyState }: ListGridProps) {
   if (loading) {
     return (
       <div className="flex flex-col gap-3">
-        {Array.from({ length: 4 }).map((_, i) => (
+        {SKELETON_KEYS.map((i) => (
           <ListCardSkeleton key={i} />
         ))}
       </div>

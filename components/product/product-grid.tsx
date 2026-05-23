@@ -10,6 +10,8 @@ const containerVariants = {
   visible: { transition: { staggerChildren: 0.06 } },
 }
 
+const SKELETON_KEYS = Array.from({ length: 8 }, (_, i) => i)
+
 interface ProductGridProps {
   items: TrackedItem[]
   listId: string
@@ -30,7 +32,7 @@ export function ProductGrid({
   if (loading) {
     return (
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {Array.from({ length: 8 }).map((_, i) => (
+        {SKELETON_KEYS.map((i) => (
           <ProductCardSkeleton key={i} />
         ))}
       </div>
@@ -48,11 +50,12 @@ export function ProductGrid({
       animate="visible"
       className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
     >
-      {items.map((item) => (
+      {items.map((item, index) => (
         <ProductCard
           key={item.id}
           item={item}
           listId={listId}
+          priority={index === 0}
           isSelected={selectedIds?.includes(item.id)}
           onSelect={onSelect}
         />

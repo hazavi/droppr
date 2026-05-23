@@ -27,17 +27,17 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user) return
     setDropsLoading(true)
-    getRecentlyDropped(user.uid, 6)
-      .then(setRecentDrops)
-      .finally(() => setDropsLoading(false))
-  }, [user])
-
-  useEffect(() => {
-    if (!user) return
     setAddedLoading(true)
-    getRecentlyAdded(user.uid, 6)
-      .then(setRecentAdded)
-      .finally(() => setAddedLoading(false))
+    Promise.all([
+      getRecentlyDropped(user.uid, 6),
+      getRecentlyAdded(user.uid, 6),
+    ]).then(([drops, added]) => {
+      setRecentDrops(drops)
+      setRecentAdded(added)
+    }).finally(() => {
+      setDropsLoading(false)
+      setAddedLoading(false)
+    })
   }, [user])
 
   const hour = new Date().getHours()
