@@ -10,8 +10,8 @@ import {
   PlusCircle,
   Settings,
   LogOut,
-  Zap,
 } from "lucide-react"
+import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { useAuthContext } from "@/components/providers/auth-provider"
 import { toast } from "sonner"
@@ -40,9 +40,7 @@ export function Sidebar() {
     <aside className="flex h-full w-60 flex-shrink-0 flex-col border-r border-white/10 bg-[#111] px-4 py-6">
       {/* Logo */}
       <Link href="/dashboard" className="mb-8 flex items-center gap-2 px-2">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500">
-          <Zap className="h-4 w-4 text-white" />
-        </div>
+        <Image src="/droppr.png" alt="droppr" width={28} height={28} className="rounded-lg" priority />
         <span className="text-base font-bold tracking-tight text-neutral-100">
           droppr
         </span>

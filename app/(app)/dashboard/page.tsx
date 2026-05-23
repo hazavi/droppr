@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { Package, TrendingDown, FolderOpen, PlusCircle } from "lucide-react"
+import { Package, TrendingDown, FolderOpen } from "lucide-react"
 import { useAuthContext } from "@/components/providers/auth-provider"
 import { useLists } from "@/hooks/useLists"
 import { getRecentlyDropped, getRecentlyAdded } from "@/lib/firestore"
@@ -11,6 +11,7 @@ import { StatCard } from "@/components/shared/stat-card"
 import { ProductCard } from "@/components/product/product-card"
 import { ProductCardSkeleton } from "@/components/product/product-card-skeleton"
 import { EmptyState } from "@/components/shared/empty-state"
+import { TrackItemBox } from "@/components/dashboard/track-item-box"
 import type { TrackedItem } from "@/types"
 
 export default function DashboardPage() {
@@ -52,12 +53,21 @@ export default function DashboardPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <h1 className="text-2xl font-bold text-neutral-100">
+        <h1 className="text-2xl font-bold text-white">
           {greeting}, {profile?.displayName?.split(" ")[0] ?? "there"} 👋
         </h1>
-        <p className="mt-1 text-sm text-neutral-500">
+        <p className="mt-1 text-sm text-white/40">
           Here&apos;s what&apos;s happening with your tracked items.
         </p>
+      </motion.div>
+
+      {/* Track item prompt */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.08 }}
+      >
+        <TrackItemBox />
       </motion.div>
 
       {/* Stats row */}
@@ -138,13 +148,7 @@ export default function DashboardPage() {
             title="No items yet"
             description="Start by adding a product URL to begin tracking its price."
             action={
-              <Link
-                href="/add"
-                className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 transition-colors"
-              >
-                <PlusCircle className="h-4 w-4" />
-                Add your first item
-              </Link>
+              <span className="text-sm text-white/40">Use the box above to add your first item</span>
             }
           />
         ) : (

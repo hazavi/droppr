@@ -8,15 +8,11 @@ import Link from "next/link"
 import type { TrackedItem } from "@/types"
 import { formatPrice, formatRelativeTime } from "@/lib/utils"
 import { cn } from "@/lib/utils"
+import { GlassEffect } from "@/components/ui/liquid-glass"
 
 const cardVariants = {
   hidden: { opacity: 0, y: 16 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" as const } },
-}
-
-const hoverVariants = {
-  rest: { scale: 1 },
-  hover: { scale: 1.01, transition: { duration: 0.2 } },
 }
 
 interface ProductCardProps {
@@ -42,14 +38,13 @@ export const ProductCard = memo(function ProductCard({
       variants={cardVariants}
       initial="hidden"
       animate="visible"
-      whileHover="hover"
+      whileHover={{ scale: 1.02, y: -2 }}
+      transition={{ duration: 0.2 }}
     >
-      <motion.div
-        variants={hoverVariants}
+      <GlassEffect
         className={cn(
-          "group relative flex flex-col rounded-xl border bg-white/5 backdrop-blur-sm transition-colors",
-          "border-white/10 hover:border-white/20",
-          isSelected && "border-indigo-500/60 bg-indigo-500/5"
+          "group relative flex flex-col rounded-2xl",
+          isSelected && "ring-2 ring-white/40"
         )}
       >
         {/* Select checkbox */}
@@ -68,14 +63,14 @@ export const ProductCard = memo(function ProductCard({
 
         {/* Sale badge */}
         {hasDrop && (
-          <span className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full bg-green-500/20 px-2.5 py-1 text-xs font-semibold text-green-400">
+          <span className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full bg-green-500/25 px-2.5 py-1 text-xs font-semibold text-green-300 backdrop-blur-sm">
             <TrendingDown className="h-3 w-3" />
             -{item.priceDropPercent}%
           </span>
         )}
 
         {/* Product image */}
-        <div className="relative aspect-square w-full overflow-hidden rounded-t-xl bg-white/5">
+        <div className="relative aspect-square w-full overflow-hidden rounded-t-2xl bg-white/5">
           {item.image ? (
             <Image
               src={item.image}
@@ -95,10 +90,10 @@ export const ProductCard = memo(function ProductCard({
         {/* Info */}
         <div className="flex flex-1 flex-col gap-3 p-4">
           <div>
-            <p className="text-xs font-medium text-neutral-500 uppercase tracking-wider">
+            <p className="text-xs font-medium text-white/40 uppercase tracking-wider">
               {item.siteName}
             </p>
-            <p className="mt-1 line-clamp-2 text-sm font-medium text-neutral-100">
+            <p className="mt-1 line-clamp-2 text-sm font-medium text-white">
               {item.name}
             </p>
           </div>
@@ -115,22 +110,22 @@ export const ProductCard = memo(function ProductCard({
                 {formatPrice(item.currentPrice, item.currency)}
               </span>
               {hasDrop && (
-                <span className="text-sm text-neutral-500 line-through font-mono">
+                <span className="text-sm text-white/30 line-through font-mono">
                   {formatPrice(item.originalPrice, item.currency)}
                 </span>
               )}
             </div>
 
             {hasDrop && (
-              <p className="mt-0.5 text-xs text-green-500">
+              <p className="mt-0.5 text-xs text-green-400/80">
                 Save {formatPrice(item.priceDrop, item.currency)}
               </p>
             )}
           </div>
 
           {/* Footer row */}
-          <div className="flex items-center justify-between border-t border-white/5 pt-3">
-            <span className="flex items-center gap-1 text-xs text-neutral-600">
+          <div className="flex items-center justify-between border-t border-white/10 pt-3">
+            <span className="flex items-center gap-1 text-xs text-white/30">
               <Clock className="h-3 w-3" />
               {formatRelativeTime(item.lastChecked)}
             </span>
@@ -138,14 +133,14 @@ export const ProductCard = memo(function ProductCard({
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-indigo-400 transition-colors hover:bg-indigo-500/10 hover:text-indigo-300"
+              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-white/60 transition-colors hover:bg-white/10 hover:text-white"
               onClick={(e) => e.stopPropagation()}
             >
               View <ExternalLink className="h-3 w-3" />
             </Link>
           </div>
         </div>
-      </motion.div>
+      </GlassEffect>
     </motion.div>
   )
 })
