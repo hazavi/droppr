@@ -11,8 +11,7 @@ import { toast } from "sonner"
 import { useAuthContext } from "@/components/providers/auth-provider"
 import { useRouter } from "next/navigation"
 import { updateUserProfile } from "@/lib/firestore"
-import { updateProfile, deleteUser, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth"
-import { auth } from "@/lib/firebase"
+import { updateProfile, deleteUser } from "firebase/auth"
 
 const profileSchema = z.object({
   displayName: z.string().min(1, "Name is required").max(60),
