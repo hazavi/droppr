@@ -2,27 +2,25 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { motion } from "framer-motion"
-import { Package, TrendingDown, FolderOpen, PlusCircle } from "lucide-react"
+import { TrendingDown, Package } from "lucide-react"
 import { useAuthContext } from "@/components/providers/auth-provider"
 import { useLists } from "@/hooks/useLists"
 import { getRecentlyDropped, getRecentlyAdded } from "@/lib/firestore"
-import { StatCard } from "@/components/shared/stat-card"
 import { ProductCard } from "@/components/product/product-card"
 import { ProductCardSkeleton } from "@/components/product/product-card-skeleton"
 import { EmptyState } from "@/components/shared/empty-state"
+import { TrackItemBox } from "@/components/dashboard/track-item-box"
 import type { TrackedItem } from "@/types"
 
 export default function DashboardPage() {
   const { user, profile } = useAuthContext()
-  const { lists, loading: listsLoading } = useLists(user?.uid ?? null)
+  const { lists } = useLists(user?.uid ?? null)
   const [recentDrops, setRecentDrops] = useState<TrackedItem[]>([])
   const [recentAdded, setRecentAdded] = useState<TrackedItem[]>([])
   const [dropsLoading, setDropsLoading] = useState(true)
   const [addedLoading, setAddedLoading] = useState(true)
-
-  const totalItems = lists.reduce((acc, l) => acc + (l.itemCount ?? 0), 0)
-  const activeDeals = recentDrops.length
 
   useEffect(() => {
     if (!user) return
@@ -41,120 +39,116 @@ export default function DashboardPage() {
   }, [user])
 
   const hour = new Date().getHours()
-  const greeting =
-    hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening"
+  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening"
 
   return (
-    <div className="space-y-8">
-      {/* Greeting */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
+    <div className="mx-auto max-w-4xl space-y-10">
+
+      {/* Header — logo + greeting */}
+      <motion.header
+        initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
+        transition={{ duration: 0.35 }}
+        className="flex items-center justify-between"
       >
-        <h1 className="text-2xl font-bold text-neutral-100">
-          {greeting}, {profile?.displayName?.split(" ")[0] ?? "there"} 👋
-        </h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          Here&apos;s what&apos;s happening with your tracked items.
-        </p>
+        <div className="flex items-center gap-3">
+          <Image
+            src="/droppr.png"
+            alt="droppr"
+            width={48}
+            height={48}
+            className="object-contain"
+            priority
+          />
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">droppr</p>
+            <h1 className="text-lg font-bold leading-tight text-slate-900">
+              {greeting}, {profile?.displayName?.split(" ")[0] ?? "there"} 👋
+            </h1>
+          </div>
+        </div>
+      </motion.header>
+
+      {/* Track item prompt */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.06 }}
+      >
+        <TrackItemBox />
       </motion.div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard
-          label="Items tracked"
-          value={listsLoading ? "—" : totalItems}
-          icon={Package}
-        />
-        <StatCard
-          label="Active deals"
-          value={dropsLoading ? "—" : activeDeals}
-          icon={TrendingDown}
-          trend={activeDeals > 0 ? `${activeDeals} item${activeDeals !== 1 ? "s" : ""} on sale` : undefined}
-          trendUp
-        />
-        <StatCard
-          label="Lists"
-          value={listsLoading ? "—" : lists.length}
-          icon={FolderOpen}
-        />
-      </div>
-
-      {/* Recently dropped */}
-      <section>
+      {/* Recently Dropped */}
+      <motion.section
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.12 }}
+      >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-neutral-200">Recently Dropped</h2>
-          {activeDeals > 0 && (
-            <Link
-              href="/deals"
-              className="text-sm text-indigo-400 hover:text-indigo-300"
-            >
-              View all deals →
+          <div className="flex items-center gap-2">
+            <TrendingDown className="h-4 w-4 text-emerald-500" strokeWidth={2} />
+            <h2 className="text-sm font-semibold text-slate-800">Recently Dropped</h2>
+          </div>
+          {recentDrops.length > 0 && (
+            <Link href="/deals" className="text-xs font-medium text-indigo-500 hover:text-indigo-700 transition-colors">
+              View all →
             </Link>
           )}
         </div>
 
         {dropsLoading ? (
-          <div className="flex gap-4 overflow-x-auto pb-2">
+          <div className="flex gap-3 overflow-x-auto pb-2">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="w-52 shrink-0">
-                <ProductCardSkeleton />
-              </div>
+              <div key={i} className="w-48 shrink-0"><ProductCardSkeleton /></div>
             ))}
           </div>
         ) : recentDrops.length === 0 ? (
           <EmptyState
             icon={TrendingDown}
             title="No price drops yet"
-            description="We'll check your tracked items every 6 hours and notify you when prices drop."
+            description="We check your tracked items every 6 hours and notify you when prices fall."
           />
         ) : (
-          <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1">
-            {recentDrops.map((item) => (
-              <div key={item.id} className="w-52 shrink-0">
-                <ProductCard item={item} listId="" />
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+            {recentDrops.map((item, i) => (
+              <div key={item.id} className="w-48 shrink-0">
+                <ProductCard item={item} listId="" priority={i === 0} />
               </div>
             ))}
           </div>
         )}
-      </section>
+      </motion.section>
 
-      {/* Recently added */}
-      <section>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-neutral-200">Recently Added</h2>
+      {/* Recently Added */}
+      <motion.section
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.18 }}
+      >
+        <div className="mb-4 flex items-center gap-2">
+          <Package className="h-4 w-4 text-indigo-500" strokeWidth={2} />
+          <h2 className="text-sm font-semibold text-slate-800">Recently Added</h2>
         </div>
 
         {addedLoading ? (
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <ProductCardSkeleton key={i} />
-            ))}
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => <ProductCardSkeleton key={i} />)}
           </div>
         ) : recentAdded.length === 0 ? (
           <EmptyState
             icon={Package}
-            title="No items yet"
-            description="Start by adding a product URL to begin tracking its price."
-            action={
-              <Link
-                href="/add"
-                className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 transition-colors"
-              >
-                <PlusCircle className="h-4 w-4" />
-                Add your first item
-              </Link>
-            }
+            title="Nothing tracked yet"
+            description="Paste a product URL above to start tracking its price."
           />
         ) : (
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {recentAdded.map((item) => (
               <ProductCard key={item.id} item={item} listId="" />
             ))}
           </div>
         )}
-      </section>
+      </motion.section>
+
     </div>
   )
 }

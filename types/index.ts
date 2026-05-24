@@ -1,4 +1,4 @@
-export type AlertType = "fixed" | "percent"
+export type AlertType = "fixed" | "percent" | "any"
 
 export interface PricePoint {
   id: string

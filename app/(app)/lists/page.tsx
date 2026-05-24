@@ -23,14 +23,14 @@ export default function ListsPage() {
         className="flex items-center justify-between"
       >
         <div>
-          <h1 className="text-2xl font-bold text-neutral-100">Lists</h1>
-          <p className="mt-1 text-sm text-neutral-500">
+          <h1 className="text-2xl font-bold text-slate-900">Lists</h1>
+          <p className="mt-1 text-sm text-slate-500">
             Organize your tracked items into lists
           </p>
         </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-500"
+          className="flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
         >
           <Plus className="h-4 w-4" />
           New List
@@ -48,7 +48,7 @@ export default function ListsPage() {
             action={
               <button
                 onClick={() => setShowCreate(true)}
-                className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 transition-colors"
+                className="flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 transition-colors"
               >
                 <Plus className="h-4 w-4" />
                 Create your first list

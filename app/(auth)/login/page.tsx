@@ -65,14 +65,14 @@ export default function LoginPage() {
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500 mb-3">
           <Zap className="h-5 w-5 text-white" />
         </div>
-        <h1 className="text-2xl font-bold text-neutral-100">Welcome back</h1>
-        <p className="mt-1.5 text-sm text-neutral-500">Sign in to your Droppr account</p>
+        <h1 className="text-2xl font-bold text-slate-900">Welcome back</h1>
+        <p className="mt-1.5 text-sm text-slate-500">Sign in to your Droppr account</p>
       </div>
 
-      <div className="rounded-2xl border border-white/10 bg-[#111] p-6 shadow-2xl">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-neutral-300">
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">
               Email
             </label>
             <input
@@ -80,15 +80,15 @@ export default function LoginPage() {
               type="email"
               autoComplete="email"
               placeholder="you@example.com"
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-neutral-100 placeholder-neutral-600 outline-none transition focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/40"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/40 shadow-sm"
             />
             {errors.email && (
-              <p className="mt-1 text-xs text-red-400">{errors.email.message}</p>
+              <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>
             )}
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-neutral-300">
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">
               Password
             </label>
             <input
@@ -96,17 +96,17 @@ export default function LoginPage() {
               type="password"
               autoComplete="current-password"
               placeholder="••••••••"
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-neutral-100 placeholder-neutral-600 outline-none transition focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/40"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/40 shadow-sm"
             />
             {errors.password && (
-              <p className="mt-1 text-xs text-red-400">{errors.password.message}</p>
+              <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>
             )}
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-500 disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:opacity-60"
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
             Sign In
@@ -114,15 +114,15 @@ export default function LoginPage() {
         </form>
 
         <div className="my-4 flex items-center gap-3">
-          <div className="flex-1 h-px bg-white/10" />
-          <span className="text-xs text-neutral-600">or</span>
-          <div className="flex-1 h-px bg-white/10" />
+          <div className="flex-1 h-px bg-slate-200" />
+          <span className="text-xs text-slate-400">or</span>
+          <div className="flex-1 h-px bg-slate-200" />
         </div>
 
         <button
           onClick={handleGoogle}
           disabled={googleLoading}
-          className="flex w-full items-center justify-center gap-3 rounded-lg border border-white/10 bg-white/5 py-2.5 text-sm font-medium text-neutral-300 transition-colors hover:bg-white/10 disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60 shadow-sm"
         >
           {googleLoading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -150,9 +150,9 @@ export default function LoginPage() {
         </button>
       </div>
 
-      <p className="mt-4 text-center text-sm text-neutral-500">
+      <p className="mt-4 text-center text-sm text-slate-500">
         Don&apos;t have an account?{" "}
-        <Link href="/register" className="text-indigo-400 hover:text-indigo-300">
+        <Link href="/register" className="text-indigo-600 hover:text-indigo-700">
           Sign up
         </Link>
       </p>

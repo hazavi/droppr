@@ -90,12 +90,12 @@ export function CreateListModal({ open, onClose, onCreated }: CreateListModalPro
             transition={{ duration: 0.2 }}
             className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2"
           >
-            <div className="rounded-2xl border border-white/10 bg-[#111] p-6 shadow-2xl">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
               <div className="flex items-center justify-between mb-5">
-                <h2 className="text-lg font-semibold text-neutral-100">New List</h2>
+                <h2 className="text-lg font-semibold text-slate-900">New List</h2>
                 <button
                   onClick={handleClose}
-                  className="rounded-md p-1.5 text-neutral-500 hover:bg-white/5 hover:text-neutral-300"
+                  className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -103,13 +103,13 @@ export function CreateListModal({ open, onClose, onCreated }: CreateListModalPro
 
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium text-neutral-300">
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">
                     List name
                   </label>
                   <input
                     {...register("name")}
                     placeholder="e.g. Summer wardrobe"
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-neutral-100 placeholder-neutral-600 outline-none transition focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/40"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/40 shadow-sm"
                   />
                   {errors.name && (
                     <p className="mt-1 text-xs text-red-400">{errors.name.message}</p>
@@ -117,7 +117,7 @@ export function CreateListModal({ open, onClose, onCreated }: CreateListModalPro
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium text-neutral-300">
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">
                     Category
                   </label>
                   <div className="flex flex-wrap gap-2 mb-2">
@@ -128,8 +128,8 @@ export function CreateListModal({ open, onClose, onCreated }: CreateListModalPro
                         onClick={() => setValue("category", cat)}
                         className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                           selectedCategory === cat
-                            ? "bg-indigo-500 text-white"
-                            : "bg-white/5 text-neutral-400 hover:bg-white/10 hover:text-neutral-200"
+                            ? "bg-slate-900 text-white"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900"
                         }`}
                       >
                         {cat}
@@ -139,7 +139,7 @@ export function CreateListModal({ open, onClose, onCreated }: CreateListModalPro
                   <input
                     {...register("category")}
                     placeholder="Or type a custom category"
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-neutral-100 placeholder-neutral-600 outline-none transition focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/40"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/40 shadow-sm"
                   />
                   {errors.category && (
                     <p className="mt-1 text-xs text-red-400">{errors.category.message}</p>
@@ -150,7 +150,7 @@ export function CreateListModal({ open, onClose, onCreated }: CreateListModalPro
                   <button
                     type="button"
                     onClick={handleClose}
-                    className="flex-1 rounded-lg border border-white/10 py-2.5 text-sm font-medium text-neutral-400 hover:bg-white/5 hover:text-neutral-200 transition-colors"
+                    className="flex-1 rounded-lg border border-slate-200 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
                   >
                     Cancel
                   </button>
