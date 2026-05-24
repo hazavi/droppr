@@ -4,7 +4,7 @@ import { motion } from "framer-motion"
 import { FolderOpen, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import type { ItemList } from "@/types"
-import { formatRelativeTime } from "@/lib/utils"
+import { formatRelativeTime, toSlug } from "@/lib/utils"
 import { GlassEffect } from "@/components/ui/liquid-glass"
 
 const cardVariants = {
@@ -19,7 +19,7 @@ interface ListCardProps {
 export function ListCard({ list }: ListCardProps) {
   return (
     <motion.div variants={cardVariants} initial="hidden" animate="visible">
-      <Link href={`/lists/${list.id}`} className="group block">
+      <Link href={`/lists/${toSlug(list.name)}`} className="group block">
         <GlassEffect className="rounded-2xl transition-all duration-300 hover:scale-[1.01]">
           <div className="p-5">
             <div className="flex items-start justify-between gap-3">

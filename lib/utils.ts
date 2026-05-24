@@ -16,6 +16,13 @@ export function formatPrice(amount: number, currency: string): string {
   }
 }
 
+export function toSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+}
+
 export function formatRelativeTime(date: Date): string {
   const now = Date.now()
   const diff = now - date.getTime()
