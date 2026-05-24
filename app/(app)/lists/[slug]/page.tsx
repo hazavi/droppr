@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, use, useEffect } from "react"
+import { useState, use } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { ArrowLeft, Plus, Trash2, MoveRight, Package } from "lucide-react"
 import Link from "next/link"
@@ -8,31 +8,27 @@ import { toast } from "sonner"
 import { useAuthContext } from "@/components/providers/auth-provider"
 import { useItems } from "@/hooks/useItems"
 import { useLists } from "@/hooks/useLists"
-import { deleteItems, moveItems, getList } from "@/lib/firestore"
+import { deleteItems, moveItems } from "@/lib/firestore"
+import { toSlug } from "@/lib/utils"
 import { ProductGrid } from "@/components/product/product-grid"
 import { AddItemModal } from "@/components/modals/add-item-modal"
 import { EmptyState } from "@/components/shared/empty-state"
-import type { ItemList } from "@/types"
 
 export default function ListDetailPage({
   params,
 }: {
-  params: Promise<{ listId: string }>
+  params: Promise<{ slug: string }>
 }) {
-  const { listId } = use(params)
+  const { slug } = use(params)
   const { user } = useAuthContext()
-  const { items, loading } = useItems(user?.uid ?? null, listId)
   const { lists } = useLists(user?.uid ?? null)
-  const [list, setList] = useState<ItemList | null>(null)
+  const list = lists.find((l) => toSlug(l.name) === slug) ?? null
+  const listId = list?.id ?? null
+  const { items, loading } = useItems(user?.uid ?? null, listId)
   const [showAdd, setShowAdd] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [bulkLoading, setBulkLoading] = useState(false)
   const [showMoveMenu, setShowMoveMenu] = useState(false)
-
-  useEffect(() => {
-    if (!user) return
-    getList(user.uid, listId).then(setList)
-  }, [user, listId])
 
   function toggleSelect(id: string) {
     setSelectedIds((prev) =>
@@ -41,7 +37,7 @@ export default function ListDetailPage({
   }
 
   async function handleDelete() {
-    if (!user || selectedIds.length === 0) return
+    if (!user || !listId || selectedIds.length === 0) return
     setBulkLoading(true)
     try {
       await deleteItems(user.uid, listId, selectedIds)
@@ -55,7 +51,7 @@ export default function ListDetailPage({
   }
 
   async function handleMove(toListId: string) {
-    if (!user || selectedIds.length === 0) return
+    if (!user || !listId || selectedIds.length === 0) return
     setBulkLoading(true)
     try {
       await moveItems(user.uid, listId, toListId, selectedIds)
@@ -198,7 +194,7 @@ export default function ListDetailPage({
         open={showAdd}
         onClose={() => setShowAdd(false)}
         lists={lists}
-        defaultListId={listId}
+        defaultListId={listId ?? undefined}
       />
     </div>
   )

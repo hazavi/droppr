@@ -63,7 +63,7 @@ export default function ListsPage() {
       <CreateListModal
         open={showCreate}
         onClose={() => setShowCreate(false)}
-        onCreated={() => router.push("/dashboard")}
+        onCreated={() => router.push("/home")}
       />
     </div>
   )
