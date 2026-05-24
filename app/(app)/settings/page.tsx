@@ -5,9 +5,11 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { motion } from "framer-motion"
-import { Loader2, User, Bell, AlertTriangle } from "lucide-react"
+import { Loader2, User, Bell, AlertTriangle, LogOut } from "lucide-react"
+import { GlassPanel } from "@/components/ui/liquid-glass"
 import { toast } from "sonner"
 import { useAuthContext } from "@/components/providers/auth-provider"
+import { useRouter } from "next/navigation"
 import { updateUserProfile } from "@/lib/firestore"
 import { updateProfile, deleteUser, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth"
 import { auth } from "@/lib/firebase"
@@ -26,12 +28,26 @@ const notifSchema = z.object({
 type NotifValues = z.infer<typeof notifSchema>
 
 export default function SettingsPage() {
-  const { user, profile } = useAuthContext()
+  const { user, profile, logOut } = useAuthContext()
+  const router = useRouter()
   const [profileLoading, setProfileLoading] = useState(false)
   const [notifLoading, setNotifLoading] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState("")
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [showDeleteZone, setShowDeleteZone] = useState(false)
+  const [signOutLoading, setSignOutLoading] = useState(false)
+
+  async function handleSignOut() {
+    setSignOutLoading(true)
+    try {
+      await logOut()
+      router.replace("/login")
+    } catch {
+      toast.error("Failed to sign out")
+    } finally {
+      setSignOutLoading(false)
+    }
+  }
 
   const profileForm = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
@@ -116,8 +132,8 @@ export default function SettingsPage() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.05 }}
-        className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm"
       >
+      <GlassPanel className="p-6">
         <div className="mb-5 flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50">
             <User className="h-4 w-4 text-indigo-500" />
@@ -169,6 +185,7 @@ export default function SettingsPage() {
             Save changes
           </button>
         </form>
+      </GlassPanel>
       </motion.section>
 
       {/* Notifications section */}
@@ -176,8 +193,8 @@ export default function SettingsPage() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.1 }}
-        className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm"
       >
+      <GlassPanel className="p-6">
         <div className="mb-5 flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50">
             <Bell className="h-4 w-4 text-indigo-500" />
@@ -212,6 +229,31 @@ export default function SettingsPage() {
             Save preferences
           </button>
         </form>
+      </GlassPanel>
+      </motion.section>
+
+      {/* Sign out */}
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.13 }}
+      >
+      <GlassPanel className="p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold text-slate-800">Sign out</p>
+            <p className="mt-0.5 text-xs text-slate-400">{profile?.email}</p>
+          </div>
+          <button
+            onClick={handleSignOut}
+            disabled={signOutLoading}
+            className="flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60"
+          >
+            {signOutLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+            Sign out
+          </button>
+        </div>
+      </GlassPanel>
       </motion.section>
 
       {/* Danger zone */}
@@ -219,8 +261,8 @@ export default function SettingsPage() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.15 }}
-        className="rounded-2xl border border-red-500/20 bg-red-500/5 p-6"
       >
+      <GlassPanel className="border border-red-200/60 p-6" style={{ background: "rgba(255,240,240,0.55)" }}>
         <div className="mb-5 flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50">
             <AlertTriangle className="h-4 w-4 text-red-500" />
@@ -272,6 +314,7 @@ export default function SettingsPage() {
             </div>
           </div>
         )}
+      </GlassPanel>
       </motion.section>
     </div>
   )

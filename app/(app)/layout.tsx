@@ -4,6 +4,7 @@ import { useEffect, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { useAuthContext } from "@/components/providers/auth-provider"
 import { Dock } from "@/components/layout/dock"
+import { GlassFilter } from "@/components/ui/liquid-glass"
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { user, loading } = useAuthContext()
@@ -27,6 +28,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="relative min-h-screen bg-zinc-50">
+      {/* Single SVG filter for liquid glass — referenced by all GlassEffect components */}
+      <GlassFilter />
       {/* Aurora background layer */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">
         <div

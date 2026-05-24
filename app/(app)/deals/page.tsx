@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react"
 import { motion } from "framer-motion"
 import { TrendingDown, SlidersHorizontal } from "lucide-react"
+import { GlassPanel } from "@/components/ui/liquid-glass"
 import { useAuthContext } from "@/components/providers/auth-provider"
 import { useLists } from "@/hooks/useLists"
 import { useDeals } from "@/hooks/useDeals"
@@ -54,8 +55,8 @@ export default function DealsPage() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25, delay: 0.05 }}
-        className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white/70 p-4 shadow-sm backdrop-blur-sm"
       >
+      <GlassPanel className="flex flex-wrap items-center gap-3 rounded-xl p-4">
         <SlidersHorizontal className="h-4 w-4 text-slate-400 shrink-0" />
 
         <div className="flex items-center gap-2">
@@ -86,9 +87,8 @@ export default function DealsPage() {
             <option value="price_asc">Lowest price</option>
           </select>
         </div>
+      </GlassPanel>
       </motion.div>
-
-      {/* Grid */}
       <ProductGrid
         items={filtered}
         listId=""
