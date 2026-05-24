@@ -87,19 +87,23 @@ export function AddItemModal({ open, onClose, lists, defaultListId }: AddItemMod
     if (!user || !scraped) return
     setSaving(true)
     try {
+      const originalPrice = scraped.comparePrice ?? scraped.price
+      const priceDrop = Math.max(0, originalPrice - scraped.price)
+      const priceDropPercent =
+        originalPrice > 0 ? Math.round((priceDrop / originalPrice) * 100 * 10) / 10 : 0
       await addItem(user.uid, values.listId, {
         url: values.url,
         name: values.name,
         image: scraped.image,
         siteName: scraped.siteName,
         currentPrice: scraped.price,
-        originalPrice: scraped.price,
+        originalPrice,
         currency: scraped.currency,
         alertType: values.alertType,
         alertValue: values.alertValue,
-        onSale: false,
-        priceDrop: 0,
-        priceDropPercent: 0,
+        onSale: priceDrop > 0,
+        priceDrop,
+        priceDropPercent,
       })
       toast.success("Item added to watchlist")
       handleClose()

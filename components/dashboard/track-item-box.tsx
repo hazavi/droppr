@@ -12,7 +12,7 @@ import { useAuthContext } from "@/components/providers/auth-provider"
 import { useLists } from "@/hooks/useLists"
 import { addItem } from "@/lib/firestore"
 import { CreateListModal } from "@/components/modals/create-list-modal"
-import { formatPrice } from "@/lib/utils"
+import { formatPrice, toSlug } from "@/lib/utils"
 import type { ScrapeResult, ScrapeError, AlertType } from "@/types"
 
 type AlertMode = "any" | "percent" | "fixed"
@@ -79,24 +79,31 @@ export function TrackItemBox() {
       const firestoreAlertType: AlertType = alertMode === "any" ? "any" : alertMode
       const firestoreAlertValue = alertMode === "any" ? 0 : alertValue
 
+      const originalPrice = scraped.comparePrice ?? scraped.price
+      const priceDrop = Math.max(0, originalPrice - scraped.price)
+      const priceDropPercent =
+        originalPrice > 0 ? Math.round((priceDrop / originalPrice) * 100 * 10) / 10 : 0
+
       await addItem(user.uid, selectedListId, {
         url: scraped.url,
         name: scraped.name,
         image: scraped.image,
         siteName: scraped.siteName,
         currentPrice: scraped.price,
-        originalPrice: scraped.price,
+        originalPrice,
         currency: scraped.currency,
         alertType: firestoreAlertType,
         alertValue: firestoreAlertValue,
-        onSale: false,
-        priceDrop: 0,
-        priceDropPercent: 0,
+        onSale: priceDrop > 0,
+        priceDrop,
+        priceDropPercent,
       })
       setDone(true)
       toast.success("Now tracking " + scraped.name)
+      const selectedList = lists.find((l) => l.id === selectedListId)
+      const slug = selectedList ? toSlug(selectedList.name) : selectedListId
       setTimeout(() => {
-        router.push(`/lists/${selectedListId}`)
+        router.push(`/lists/${slug}`)
       }, 1200)
     } catch {
       toast.error("Failed to add item")
