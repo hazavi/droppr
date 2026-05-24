@@ -55,9 +55,9 @@ export default function DashboardPage() {
           <Image
             src="/droppr.png"
             alt="droppr"
-            width={38}
-            height={38}
-            className="rounded-xl shadow-sm"
+            width={48}
+            height={48}
+            className="object-contain"
             priority
           />
           <div>
