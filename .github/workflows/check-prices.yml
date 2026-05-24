@@ -9,13 +9,35 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger price check
+      - name: Validate secrets
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            -X GET "${{ secrets.APP_URL }}/api/cron/check-prices" \
-            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}")
-          echo "Response status: $STATUS"
-          if [ "$STATUS" != "200" ]; then
-            echo "Price check failed with status $STATUS"
+          if [ -z "${{ secrets.APP_URL }}" ]; then
+            echo "ERROR: APP_URL secret is not set"
             exit 1
           fi
+          if [ -z "${{ secrets.CRON_SECRET }}" ]; then
+            echo "ERROR: CRON_SECRET secret is not set"
+            exit 1
+          fi
+
+      - name: Trigger price check
+        run: |
+          RESPONSE=$(curl -s -o /tmp/response_body.txt -w "%{http_code}" \
+            --max-time 60 \
+            --retry 2 \
+            --retry-delay 5 \
+            -X GET "${{ secrets.APP_URL }}/api/cron/check-prices" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            || echo "000")
+          BODY=$(cat /tmp/response_body.txt 2>/dev/null || echo "(no body)")
+          echo "Response status: $RESPONSE"
+          echo "Response body: $BODY"
+          case "$RESPONSE" in
+            200) echo "Price check completed successfully" ;;
+            000) echo "ERROR: Could not reach ${{ secrets.APP_URL }} (network/DNS failure or timeout)"; exit 1 ;;
+            401) echo "ERROR: Unauthorized — CRON_SECRET mismatch"; exit 1 ;;
+            404) echo "ERROR: Endpoint not found — check APP_URL"; exit 1 ;;
+            408|504) echo "ERROR: Request timed out (status $RESPONSE)"; exit 1 ;;
+            5*)  echo "ERROR: Server error (status $RESPONSE)"; exit 1 ;;
+            *)   echo "ERROR: Unexpected status $RESPONSE"; exit 1 ;;
+          esac
