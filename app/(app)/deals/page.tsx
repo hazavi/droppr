@@ -56,36 +56,38 @@ export default function DealsPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25, delay: 0.05 }}
       >
-      <GlassPanel className="flex flex-wrap items-center gap-3 rounded-xl p-4">
-        <SlidersHorizontal className="h-4 w-4 text-slate-400 shrink-0" />
+      <GlassPanel className="rounded-xl p-4">
+        <div className="flex items-center gap-3">
+          <SlidersHorizontal className="h-4 w-4 text-slate-400 shrink-0" />
 
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-slate-500">Min drop</label>
-          <select
-            value={filterMinPct}
-            onChange={(e) => setFilterMinPct(Number(e.target.value))}
-            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 outline-none focus:border-indigo-400 shadow-sm"
-          >
-            <option value={0}>Any</option>
-            <option value={5}>5%+</option>
-            <option value={10}>10%+</option>
-            <option value={20}>20%+</option>
-            <option value={30}>30%+</option>
-            <option value={50}>50%+</option>
-          </select>
-        </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-slate-500">Min drop</label>
+            <select
+              value={filterMinPct}
+              onChange={(e) => setFilterMinPct(Number(e.target.value))}
+              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 outline-none focus:border-indigo-400 shadow-sm"
+            >
+              <option value={0}>Any</option>
+              <option value={5}>5%+</option>
+              <option value={10}>10%+</option>
+              <option value={20}>20%+</option>
+              <option value={30}>30%+</option>
+              <option value={50}>50%+</option>
+            </select>
+          </div>
 
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-slate-500">Sort by</label>
-          <select
-            value={sortKey}
-            onChange={(e) => setSortKey(e.target.value as SortKey)}
-            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 outline-none focus:border-indigo-400 shadow-sm"
-          >
-            <option value="drop_percent">Biggest drop</option>
-            <option value="drop_recent">Most recent</option>
-            <option value="price_asc">Lowest price</option>
-          </select>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-slate-500">Sort by</label>
+            <select
+              value={sortKey}
+              onChange={(e) => setSortKey(e.target.value as SortKey)}
+              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 outline-none focus:border-indigo-400 shadow-sm"
+            >
+              <option value="drop_percent">Biggest drop</option>
+              <option value="drop_recent">Most recent</option>
+              <option value="price_asc">Lowest price</option>
+            </select>
+          </div>
         </div>
       </GlassPanel>
       </motion.div>

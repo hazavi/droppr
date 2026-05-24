@@ -32,6 +32,15 @@ body {
   color: var(--foreground);
 }
 
+/* Pointer cursor on all interactive elements */
+button,
+[role="button"],
+label[for],
+select,
+a {
+  cursor: pointer;
+}
+
 @keyframes aurora {
   from { background-position: 50% 50%, 50% 50%; }
   to   { background-position: 350% 50%, 350% 50%; }

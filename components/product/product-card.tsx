@@ -43,7 +43,7 @@ export const ProductCard = memo(function ProductCard({
     >
       <GlassEffect
         className={cn(
-          "group relative flex flex-col rounded-2xl",
+          "group relative flex flex-col rounded-2xl cursor-pointer",
           isSelected && "ring-2 ring-white/40"
         )}
       >
