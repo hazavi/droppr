@@ -51,10 +51,19 @@ function toTrackedItem(id: string, data: Record<string, unknown>): TrackedItem {
 }
 
 function toItemList(id: string, data: Record<string, unknown>): ItemList {
+  // Backward-compat: old records stored `emoji` directly
+  const icon = ((data.icon ?? data.emoji) as string) || undefined
+  const iconType: ItemList["iconType"] = data.iconType
+    ? (data.iconType as "emoji" | "icon")
+    : data.emoji
+    ? "emoji"
+    : undefined
   return {
     id,
     name: (data.name as string) ?? "",
     category: (data.category as string) ?? "",
+    icon,
+    iconType,
     createdAt: toDate(data.createdAt),
     itemCount: (data.itemCount as number) ?? 0,
   }
@@ -132,7 +141,7 @@ export function subscribeToLists(
 
 export async function createList(
   uid: string,
-  data: Pick<ItemList, "name" | "category">
+  data: Pick<ItemList, "name" | "category" | "icon" | "iconType">
 ): Promise<string> {
   const ref = await addDoc(collection(db, "users", uid, "lists"), {
     ...data,
@@ -141,7 +150,13 @@ export async function createList(
   })
   return ref.id
 }
-
+export async function updateList(
+  uid: string,
+  listId: string,
+  updates: Partial<Pick<ItemList, "name" | "category" | "icon" | "iconType">>
+): Promise<void> {
+  await updateDoc(doc(db, "users", uid, "lists", listId), updates)
+}
 export async function deleteList(uid: string, listId: string): Promise<void> {
   // Delete all items first
   const itemsSnap = await getDocs(

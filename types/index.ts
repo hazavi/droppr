@@ -28,6 +28,8 @@ export interface ItemList {
   id: string
   name: string
   category: string
+  icon?: string
+  iconType?: "emoji" | "icon"
   createdAt: Date
   itemCount?: number
 }
