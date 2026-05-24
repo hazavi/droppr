@@ -18,8 +18,8 @@ export default function Home() {
   }, [user, loading, router])
 
   return (
-    <div className="flex h-screen items-center justify-center bg-[#0a0a0a]">
-      <div className="h-8 w-8 animate-pulse rounded-full bg-indigo-500/30" />
+    <div className="flex h-screen items-center justify-center bg-zinc-50">
+      <div className="h-8 w-8 animate-pulse rounded-full bg-slate-200" />
     </div>
   )
 }

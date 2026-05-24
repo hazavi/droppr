@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, use } from "react"
+import { useState, use, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ArrowLeft, Plus, Trash2, MoveRight } from "lucide-react"
+import { ArrowLeft, Plus, Trash2, MoveRight, Package } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { useAuthContext } from "@/components/providers/auth-provider"
@@ -12,8 +12,6 @@ import { deleteItems, moveItems, getList } from "@/lib/firestore"
 import { ProductGrid } from "@/components/product/product-grid"
 import { AddItemModal } from "@/components/modals/add-item-modal"
 import { EmptyState } from "@/components/shared/empty-state"
-import { Package, Plus as PlusIcon } from "lucide-react"
-import { useEffect } from "react"
 import type { ItemList } from "@/types"
 
 export default function ListDetailPage({
