@@ -17,7 +17,7 @@ import { useAuthContext } from "@/components/providers/auth-provider"
 import { toast } from "sonner"
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/home", label: "Home", icon: LayoutDashboard },
   { href: "/deals", label: "Deals", icon: TrendingDown },
   { href: "/lists", label: "Lists", icon: FolderOpen },
   { href: "/add", label: "Add Item", icon: PlusCircle },
@@ -39,7 +39,7 @@ export function Sidebar() {
   return (
     <aside className="flex h-full w-60 flex-shrink-0 flex-col border-r border-white/10 bg-[#111] px-4 py-6">
       {/* Logo */}
-      <Link href="/dashboard" className="mb-8 flex items-center gap-2 px-2">
+      <Link href="/home" className="mb-8 flex items-center gap-2 px-2">
         <Image src="/droppr.png" alt="droppr" width={28} height={28} className="rounded-lg" priority />
         <span className="text-base font-bold tracking-tight text-neutral-100">
           droppr

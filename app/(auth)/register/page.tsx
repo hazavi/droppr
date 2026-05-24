@@ -43,7 +43,7 @@ export default function RegisterPage() {
     setLoading(true)
     try {
       await signUp(values.email, values.password, values.displayName)
-      router.push("/dashboard")
+      router.push("/home")
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Registration failed"
       toast.error(msg.includes("email-already-in-use") ? "Email already in use" : msg)
@@ -56,7 +56,7 @@ export default function RegisterPage() {
     setGoogleLoading(true)
     try {
       await signInWithGoogle()
-      router.push("/dashboard")
+      router.push("/home")
     } catch {
       toast.error("Google sign-in failed")
     } finally {
