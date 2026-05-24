@@ -64,6 +64,7 @@ function toItemList(id: string, data: Record<string, unknown>): ItemList {
     category: (data.category as string) ?? "",
     icon,
     iconType,
+    order: (data.order as number) ?? undefined,
     createdAt: toDate(data.createdAt),
     itemCount: (data.itemCount as number) ?? 0,
   }
@@ -126,7 +127,16 @@ export function subscribeToLists(
           return list
         })
       )
-        .then(callback)
+        .then((unsorted) => {
+          // Sort by explicit order field; fall back to createdAt desc for old records
+          const sorted = [...unsorted].sort((a, b) => {
+            if (a.order !== undefined && b.order !== undefined) return a.order - b.order
+            if (a.order !== undefined) return -1
+            if (b.order !== undefined) return 1
+            return b.createdAt.getTime() - a.createdAt.getTime()
+          })
+          callback(sorted)
+        })
         .catch((err: Error) => {
           if (onError) onError(err)
           else console.error("[Firestore] subscribeToLists (count):", err.message)
@@ -145,6 +155,7 @@ export async function createList(
 ): Promise<string> {
   const ref = await addDoc(collection(db, "users", uid, "lists"), {
     ...data,
+    order: Date.now(),
     itemCount: 0,
     createdAt: serverTimestamp(),
   })
@@ -157,6 +168,18 @@ export async function updateList(
 ): Promise<void> {
   await updateDoc(doc(db, "users", uid, "lists", listId), updates)
 }
+
+export async function reorderLists(
+  uid: string,
+  updates: { id: string; order: number }[]
+): Promise<void> {
+  const batch = writeBatch(db)
+  updates.forEach(({ id, order }) => {
+    batch.update(doc(db, "users", uid, "lists", id), { order })
+  })
+  await batch.commit()
+}
+
 export async function deleteList(uid: string, listId: string): Promise<void> {
   // Delete all items first
   const itemsSnap = await getDocs(

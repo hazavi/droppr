@@ -30,6 +30,7 @@ export interface ItemList {
   category: string
   icon?: string
   iconType?: "emoji" | "icon"
+  order?: number
   createdAt: Date
   itemCount?: number
 }

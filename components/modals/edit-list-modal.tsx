@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { createPortal } from "react-dom"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -51,6 +52,9 @@ export function EditListModal({ open, onClose, list }: EditListModalProps) {
   const [deleting, setDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [iconTab, setIconTab] = useState<"icon" | "emoji">("icon")
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => setMounted(true), [])
 
   const {
     register,
@@ -121,7 +125,7 @@ export function EditListModal({ open, onClose, list }: EditListModalProps) {
     onClose()
   }
 
-  return (
+  const modal = (
     <AnimatePresence>
       {open && (
         <>
@@ -324,4 +328,6 @@ export function EditListModal({ open, onClose, list }: EditListModalProps) {
       )}
     </AnimatePresence>
   )
+
+  return mounted ? createPortal(modal, document.body) : null
 }

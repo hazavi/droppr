@@ -87,7 +87,6 @@ export default function DashboardPage() {
       >
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <TrendingDown className="h-4 w-4 text-emerald-500" strokeWidth={2} />
             <h2 className="text-sm font-semibold text-slate-800">Recently Dropped</h2>
           </div>
           {recentDrops.length > 0 && (
