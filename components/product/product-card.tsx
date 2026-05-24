@@ -2,7 +2,7 @@
 
 import { memo } from "react"
 import { motion } from "framer-motion"
-import { TrendingDown, ExternalLink, Clock } from "lucide-react"
+import { ExternalLink, Clock } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import type { TrackedItem } from "@/types"
@@ -62,9 +62,8 @@ export const ProductCard = memo(function ProductCard({
 
         {/* Sale badge */}
         {hasDrop && (
-          <span className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700 border border-emerald-200">
-            <TrendingDown className="h-3 w-3" />
-            -{item.priceDropPercent}%
+          <span className="absolute right-3 top-3 z-10 rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700 border border-red-200">
+            Sale
           </span>
         )}
 
@@ -99,7 +98,12 @@ export const ProductCard = memo(function ProductCard({
 
           {/* Pricing */}
           <div className="mt-auto">
-            <div className="flex items-end gap-2">
+            {hasDrop && (
+              <span className="block text-xs text-slate-400 line-through font-mono">
+                {formatPrice(item.originalPrice, item.currency)}
+              </span>
+            )}
+            <div className="flex items-center gap-2">
               <span
                 className={cn(
                   "text-lg font-bold font-mono",
@@ -109,17 +113,11 @@ export const ProductCard = memo(function ProductCard({
                 {formatPrice(item.currentPrice, item.currency)}
               </span>
               {hasDrop && (
-                <span className="text-sm text-slate-400 line-through font-mono">
-                  {formatPrice(item.originalPrice, item.currency)}
+                <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
+                  -{Math.round(item.priceDropPercent)}%
                 </span>
               )}
             </div>
-
-            {hasDrop && (
-              <p className="mt-0.5 text-xs text-emerald-600">
-                Save {formatPrice(item.priceDrop, item.currency)}
-              </p>
-            )}
           </div>
 
           {/* Footer row */}

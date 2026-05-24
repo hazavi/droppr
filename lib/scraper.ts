@@ -1,6 +1,15 @@
 import type { ScrapeResult, ScrapeError } from "@/types"
 
 const PRICE_SELECTORS = [
+  // Standard HTML sale-price markup: <del> = original, <ins> = current/sale
+  "ins [class*='price' i]",
+  "ins",
+  // Sale / discount class patterns (checked before generic price)
+  "[class*='sale-price' i]",
+  "[class*='price-sale' i]",
+  "[class*='price__sale' i]",
+  "[class*='current-price' i]",
+  "[class*='final-price' i]",
   // Explicit test IDs (most reliable)
   "[data-testid*='price']",
   "[data-testid*='Price']",
@@ -215,19 +224,47 @@ export async function scrapeProduct(
       let rawPrice: string | null = null
       let currency: string | null = null
 
-      // 1. Try CSS selectors for raw price text
-      //    Prefer machine-readable attributes over noisy textContent
+      // 1. Try CSS selectors — collect ALL matching elements across all selectors,
+      //    then pick the minimum numeric price (handles sale pages where both the
+      //    original struck-through price and the discounted price match the selector).
+      const priceCandidates: string[] = []
       for (const selector of selectors) {
-        const el = document.querySelector(selector)
-        if (!el) continue
-        // itemprop="price" often has a clean content attribute: <span itemprop="price" content="1195">
-        const content = el.getAttribute("content")
-        if (content?.trim()) { rawPrice = content.trim(); break }
-        // data-price attribute (e.g. <div data-price="1195.00">)
-        const dataPrice = el.getAttribute("data-price")
-        if (dataPrice?.trim()) { rawPrice = dataPrice.trim(); break }
-        // Fall back to visible text
-        if (el.textContent?.trim()) { rawPrice = el.textContent.trim(); break }
+        for (const el of Array.from(document.querySelectorAll(selector))) {
+          const content = (el as Element).getAttribute("content")?.trim()
+          const dataPrice = (el as Element).getAttribute("data-price")?.trim()
+          const text = (el as Element).textContent?.trim()
+          const val = content ?? dataPrice ?? text ?? ""
+          if (val) priceCandidates.push(val)
+        }
+      }
+      if (priceCandidates.length > 0) {
+        // Inline numeric parser — prioritises numbers with exactly 2 decimal places
+        // (real prices like 179,00) over bare integers that may be percentages like 61.
+        const parseNum = (s: string): number => {
+          const text = s.replace(/\u00a0/g, " ")
+          // First: look for a number with exactly 2 decimal digits — almost certainly a price
+          const m = text.match(/\d[\d\s.,]*[.,]\d{2}(?!\d)/)
+          if (m) {
+            let n = m[0].replace(/\s/g, "").replace(/[.,]+$/, "")
+            const lc = n.lastIndexOf(","), ld = n.lastIndexOf(".")
+            if (lc !== -1 && ld !== -1) {
+              n = lc > ld ? n.replace(/\./g, "").replace(",", ".") : n.replace(/,/g, "")
+            } else if (lc !== -1) {
+              n = n.replace(",", ".")
+            }
+            return parseFloat(n) || Infinity
+          }
+          // Fallback: any plain integer (handles currencies like JPY that have no cents)
+          const fm = text.match(/\d+/)
+          return fm ? parseFloat(fm[0]) : Infinity
+        }
+        // Drop pure percentage strings like "-61%" before comparing — they are not prices
+        const filtered = priceCandidates.filter(c => !/^\s*-?\d{1,3}\s*%\s*$/.test(c))
+        const pool = filtered.length > 0 ? filtered : priceCandidates
+        // Choose the candidate with the lowest numeric value — that is the sale/final price
+        rawPrice = pool.reduce((best, c) =>
+          parseNum(c) < parseNum(best) ? c : best
+        )
       }
 
       // 2. Always scan ALL JSON-LD blocks — use for currency regardless of whether
@@ -330,10 +367,35 @@ export async function scrapeProduct(
         currency = document.querySelector('meta[property="product:price:currency"]')?.getAttribute("content") ?? null
       }
 
+      // 5. Compare-at / original price — look for struck-through price elements
+      //    (<del> is the standard HTML element; many shops also use class names)
+      const COMPARE_SELECTORS = [
+        "del",
+        "[class*='compare' i]",
+        "[class*='original-price' i]",
+        "[class*='price-old' i]",
+        "[class*='old-price' i]",
+        "[class*='price--old' i]",
+        "[class*='was-price' i]",
+        "[class*='regular-price' i]",
+        "[class*='strikethrough' i]",
+      ]
+      let rawComparePrice: string | null = null
+      for (const sel of COMPARE_SELECTORS) {
+        for (const el of Array.from(document.querySelectorAll(sel))) {
+          const t = (el.getAttribute("content") ?? el.textContent ?? "").trim()
+          if (t && /\d/.test(t) && !/^\s*-?\d{1,3}\s*%\s*$/.test(t)) {
+            rawComparePrice = t
+            break
+          }
+        }
+        if (rawComparePrice) break
+      }
+
       // Detect block pages that serve 200 OK (e.g. Akamai, Cloudflare JS challenge)
       const isBlocked = /access denied|security check|checking your browser|just a moment|ddos-guard/i.test(pageTitle)
 
-      return { rawPrice, currency, ogTitle, ogImage, isBlocked }
+      return { rawPrice, rawComparePrice, currency, ogTitle, ogImage, isBlocked }
     }, PRICE_SELECTORS)
 
     const siteName = new URL(url).hostname.replace(/^www\./, "")
@@ -364,11 +426,14 @@ export async function scrapeProduct(
     }
 
     const detectedCurrency = result.currency ?? detectCurrency(result.rawPrice, url)
+    const comparePrice = result.rawComparePrice ? parsePrice(result.rawComparePrice) ?? undefined : undefined
 
     return {
       name: result.ogTitle?.slice(0, 200) ?? "Unnamed product",
       image: result.ogImage ?? "",
       price,
+      // Only include comparePrice when it's strictly higher than the sale price
+      comparePrice: comparePrice !== undefined && comparePrice > price ? comparePrice : undefined,
       currency: detectedCurrency,
       siteName,
     }

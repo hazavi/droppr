@@ -44,6 +44,7 @@ export interface ScrapeResult {
   name: string
   image: string
   price: number
+  comparePrice?: number
   currency: string
   siteName: string
 }
