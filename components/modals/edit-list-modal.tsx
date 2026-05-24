@@ -1,15 +1,17 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { createPortal } from "react-dom"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { motion, AnimatePresence } from "framer-motion"
-import { X, Loader2 } from "lucide-react"
+import { X, Loader2, Trash2 } from "lucide-react"
 import { toast } from "sonner"
-import { createList } from "@/lib/firestore"
+import { updateList, deleteList } from "@/lib/firestore"
 import { useAuthContext } from "@/components/providers/auth-provider"
 import { LIST_ICONS } from "@/components/list/list-icon-map"
+import type { ItemList } from "@/types"
 
 const schema = z.object({
   name: z.string().min(1, "Name is required").max(80),
@@ -32,23 +34,27 @@ const PRESET_CATEGORIES = [
 ]
 
 const PRESET_EMOJIS = [
-  "👗", "👟", "👜", "🧥", "🕶️",
-  "💻", "📱", "🎮", "🎧", "📷",
-  "💄", "🧴", "🪥", "💅", "🌿",
-  "🏠", "🛋️", "🪴", "🕯️", "🧹",
-  "📚", "🎸", "🏋️", "✈️", "🎁",
+  "👗", "👟", "👜", "🧥", "🕶️", "👑",
+  "💻", "📱", "🎮", "🎧", "📷", "⌚",
+  "💄", "🧴", "💅", "🌿", "✨", "💎",
+  "🏠", "📚", "☕", "🏋️", "✈️", "🎁",
 ]
 
-interface CreateListModalProps {
+interface EditListModalProps {
   open: boolean
   onClose: () => void
-  onCreated?: (listId: string) => void
+  list: ItemList
 }
 
-export function CreateListModal({ open, onClose, onCreated }: CreateListModalProps) {
+export function EditListModal({ open, onClose, list }: EditListModalProps) {
   const { user } = useAuthContext()
-  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [iconTab, setIconTab] = useState<"icon" | "emoji">("icon")
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => setMounted(true), [])
 
   const {
     register,
@@ -63,35 +69,63 @@ export function CreateListModal({ open, onClose, onCreated }: CreateListModalPro
   const selectedIcon = watch("icon")
   const selectedIconType = watch("iconType")
 
+  // Populate form when modal opens / list changes
+  useEffect(() => {
+    if (open) {
+      reset({
+        name: list.name,
+        category: list.category,
+        icon: list.icon,
+        iconType: list.iconType,
+      })
+      setIconTab(list.iconType === "emoji" ? "emoji" : "icon")
+      setConfirmDelete(false)
+    }
+  }, [open, list, reset])
+
   async function onSubmit(values: FormValues) {
     if (!user) return
-    setLoading(true)
+    setSaving(true)
     try {
-      const id = await createList(user.uid, {
+      await updateList(user.uid, list.id, {
         name: values.name,
         category: values.category,
         icon: values.icon,
         iconType: values.iconType,
       })
-      toast.success(`List "${values.name}" created`)
-      reset()
-      setIconTab("icon")
-      onCreated?.(id)
+      toast.success("List updated")
       onClose()
     } catch {
-      toast.error("Failed to create list")
+      toast.error("Failed to update list")
     } finally {
-      setLoading(false)
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!confirmDelete) {
+      setConfirmDelete(true)
+      return
+    }
+    if (!user) return
+    setDeleting(true)
+    try {
+      await deleteList(user.uid, list.id)
+      toast.success(`"${list.name}" deleted`)
+      onClose()
+    } catch {
+      toast.error("Failed to delete list")
+    } finally {
+      setDeleting(false)
     }
   }
 
   function handleClose() {
-    reset()
-    setIconTab("icon")
+    setConfirmDelete(false)
     onClose()
   }
 
-  return (
+  const modal = (
     <AnimatePresence>
       {open && (
         <>
@@ -109,11 +143,11 @@ export function CreateListModal({ open, onClose, onCreated }: CreateListModalPro
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 12 }}
             transition={{ duration: 0.2 }}
-            className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2"
+            className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 max-h-[90vh] overflow-y-auto"
           >
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
               <div className="flex items-center justify-between mb-5">
-                <h2 className="text-lg font-semibold text-slate-900">New List</h2>
+                <h2 className="text-lg font-semibold text-slate-900">Edit List</h2>
                 <button
                   onClick={handleClose}
                   className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
@@ -123,13 +157,13 @@ export function CreateListModal({ open, onClose, onCreated }: CreateListModalPro
               </div>
 
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                {/* Name */}
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-slate-700">
                     List name
                   </label>
                   <input
                     {...register("name")}
-                    placeholder="e.g. Summer wardrobe"
                     className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/40 shadow-sm"
                   />
                   {errors.name && (
@@ -137,11 +171,11 @@ export function CreateListModal({ open, onClose, onCreated }: CreateListModalPro
                   )}
                 </div>
 
+                {/* Icon picker */}
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-slate-700">
                     Icon
                   </label>
-                  {/* Tab switcher */}
                   <div className="mb-3 flex gap-1 rounded-lg bg-slate-100 p-1">
                     <button
                       type="button"
@@ -227,6 +261,7 @@ export function CreateListModal({ open, onClose, onCreated }: CreateListModalPro
                   )}
                 </div>
 
+                {/* Category */}
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-slate-700">
                     Category
@@ -257,21 +292,33 @@ export function CreateListModal({ open, onClose, onCreated }: CreateListModalPro
                   )}
                 </div>
 
+                {/* Actions */}
                 <div className="flex gap-3 pt-2">
                   <button
                     type="button"
-                    onClick={handleClose}
-                    className="flex-1 rounded-lg border border-slate-200 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className={`flex items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                      confirmDelete
+                        ? "bg-red-600 text-white hover:bg-red-500"
+                        : "border border-slate-200 text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                    } disabled:opacity-60`}
                   >
-                    Cancel
+                    {deleting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                    {confirmDelete ? "Confirm delete" : "Delete"}
                   </button>
+
                   <button
                     type="submit"
-                    disabled={loading}
+                    disabled={saving}
                     className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-indigo-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-500 disabled:opacity-60"
                   >
-                    {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                    Create List
+                    {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+                    Save changes
                   </button>
                 </div>
               </form>
@@ -281,4 +328,6 @@ export function CreateListModal({ open, onClose, onCreated }: CreateListModalPro
       )}
     </AnimatePresence>
   )
+
+  return mounted ? createPortal(modal, document.body) : null
 }

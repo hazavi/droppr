@@ -51,10 +51,20 @@ function toTrackedItem(id: string, data: Record<string, unknown>): TrackedItem {
 }
 
 function toItemList(id: string, data: Record<string, unknown>): ItemList {
+  // Backward-compat: old records stored `emoji` directly
+  const icon = ((data.icon ?? data.emoji) as string) || undefined
+  const iconType: ItemList["iconType"] = data.iconType
+    ? (data.iconType as "emoji" | "icon")
+    : data.emoji
+    ? "emoji"
+    : undefined
   return {
     id,
     name: (data.name as string) ?? "",
     category: (data.category as string) ?? "",
+    icon,
+    iconType,
+    order: (data.order as number) ?? undefined,
     createdAt: toDate(data.createdAt),
     itemCount: (data.itemCount as number) ?? 0,
   }
@@ -117,7 +127,16 @@ export function subscribeToLists(
           return list
         })
       )
-        .then(callback)
+        .then((unsorted) => {
+          // Sort by explicit order field; fall back to createdAt desc for old records
+          const sorted = [...unsorted].sort((a, b) => {
+            if (a.order !== undefined && b.order !== undefined) return a.order - b.order
+            if (a.order !== undefined) return -1
+            if (b.order !== undefined) return 1
+            return b.createdAt.getTime() - a.createdAt.getTime()
+          })
+          callback(sorted)
+        })
         .catch((err: Error) => {
           if (onError) onError(err)
           else console.error("[Firestore] subscribeToLists (count):", err.message)
@@ -132,14 +151,33 @@ export function subscribeToLists(
 
 export async function createList(
   uid: string,
-  data: Pick<ItemList, "name" | "category">
+  data: Pick<ItemList, "name" | "category" | "icon" | "iconType">
 ): Promise<string> {
   const ref = await addDoc(collection(db, "users", uid, "lists"), {
     ...data,
+    order: Date.now(),
     itemCount: 0,
     createdAt: serverTimestamp(),
   })
   return ref.id
+}
+export async function updateList(
+  uid: string,
+  listId: string,
+  updates: Partial<Pick<ItemList, "name" | "category" | "icon" | "iconType">>
+): Promise<void> {
+  await updateDoc(doc(db, "users", uid, "lists", listId), updates)
+}
+
+export async function reorderLists(
+  uid: string,
+  updates: { id: string; order: number }[]
+): Promise<void> {
+  const batch = writeBatch(db)
+  updates.forEach(({ id, order }) => {
+    batch.update(doc(db, "users", uid, "lists", id), { order })
+  })
+  await batch.commit()
 }
 
 export async function deleteList(uid: string, listId: string): Promise<void> {
