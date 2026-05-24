@@ -6,7 +6,6 @@ import Image from "next/image"
 import { motion } from "framer-motion"
 import { TrendingDown, Package } from "lucide-react"
 import { useAuthContext } from "@/components/providers/auth-provider"
-import { useLists } from "@/hooks/useLists"
 import { getRecentlyDropped, getRecentlyAdded } from "@/lib/firestore"
 import { ProductCard } from "@/components/product/product-card"
 import { ProductCardSkeleton } from "@/components/product/product-card-skeleton"
@@ -16,7 +15,6 @@ import type { TrackedItem } from "@/types"
 
 export default function DashboardPage() {
   const { user, profile } = useAuthContext()
-  const { lists } = useLists(user?.uid ?? null)
   const [recentDrops, setRecentDrops] = useState<TrackedItem[]>([])
   const [recentAdded, setRecentAdded] = useState<TrackedItem[]>([])
   const [dropsLoading, setDropsLoading] = useState(true)
@@ -24,18 +22,21 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!user) return
-    setDropsLoading(true)
-    setAddedLoading(true)
+    let cancelled = false
     Promise.all([
       getRecentlyDropped(user.uid, 6),
       getRecentlyAdded(user.uid, 6),
     ]).then(([drops, added]) => {
+      if (cancelled) return
       setRecentDrops(drops)
       setRecentAdded(added)
     }).finally(() => {
-      setDropsLoading(false)
-      setAddedLoading(false)
+      if (!cancelled) {
+        setDropsLoading(false)
+        setAddedLoading(false)
+      }
     })
+    return () => { cancelled = true }
   }, [user])
 
   const hour = new Date().getHours()
@@ -86,7 +87,6 @@ export default function DashboardPage() {
       >
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <TrendingDown className="h-4 w-4 text-emerald-500" strokeWidth={2} />
             <h2 className="text-sm font-semibold text-slate-800">Recently Dropped</h2>
           </div>
           {recentDrops.length > 0 && (

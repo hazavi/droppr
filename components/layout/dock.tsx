@@ -13,7 +13,7 @@ import { useState } from "react"
 import { cn } from "@/lib/utils"
 
 const navItems = [
-  { href: "/dashboard", label: "Home",     icon: House },
+  { href: "/home", label: "Home",     icon: House },
   { href: "/deals",     label: "Deals",    icon: TrendingDown },
   { href: "/lists",     label: "Lists",    icon: FolderOpen },
   { href: "/settings",  label: "Settings", icon: SlidersHorizontal },

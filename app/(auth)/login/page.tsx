@@ -34,7 +34,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       await signIn(values.email, values.password)
-      router.push("/dashboard")
+      router.push("/home")
     } catch {
       toast.error("Invalid email or password")
     } finally {
@@ -46,7 +46,7 @@ export default function LoginPage() {
     setGoogleLoading(true)
     try {
       await signInWithGoogle()
-      router.push("/dashboard")
+      router.push("/home")
     } catch {
       toast.error("Google sign-in failed")
     } finally {

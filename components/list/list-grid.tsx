@@ -1,32 +1,35 @@
 "use client"
 
-import { motion } from "framer-motion"
+import { useState, useEffect } from "react"
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable"
 import { ListCard } from "./list-card"
 import type { ItemList } from "@/types"
 
-const containerVariants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.05 } },
-}
-
 const SKELETON_KEYS = Array.from({ length: 4 }, (_, i) => i)
 
-function ListCardSkeleton() {
+function ListRowSkeleton() {
   return (
-    <div className="rounded-2xl border border-white/40 bg-white/50 p-5 animate-pulse">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="h-11 w-11 rounded-xl bg-slate-200" />
-          <div className="space-y-2">
-            <div className="h-4 w-28 rounded bg-slate-200" />
-            <div className="h-3 w-16 rounded bg-slate-100" />
-          </div>
-        </div>
+    <div className="flex items-center gap-3 px-5 py-4">
+      <div className="h-10 w-10 rounded-xl bg-slate-200 shrink-0" />
+      <div className="flex-1 space-y-2">
+        <div className="h-4 w-36 rounded bg-slate-200" />
+        <div className="h-3 w-20 rounded bg-slate-100" />
       </div>
-      <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
-        <div className="h-3 w-12 rounded bg-slate-200" />
-        <div className="h-3 w-16 rounded bg-slate-100" />
-      </div>
+      <div className="h-3 w-10 rounded bg-slate-100" />
     </div>
   )
 }
@@ -35,33 +38,60 @@ interface ListGridProps {
   lists: ItemList[]
   loading?: boolean
   emptyState?: React.ReactNode
+  onReorder?: (lists: ItemList[]) => void
 }
 
-export function ListGrid({ lists, loading, emptyState }: ListGridProps) {
+export function ListGrid({ lists, loading, emptyState, onReorder }: ListGridProps) {
+  const [ordered, setOrdered] = useState(lists)
+
+  // Keep in sync when Firestore pushes updates
+  useEffect(() => {
+    setOrdered(lists)
+  }, [lists])
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      setOrdered((prev) => {
+        const oldIndex = prev.findIndex((l) => l.id === active.id)
+        const newIndex = prev.findIndex((l) => l.id === over.id)
+        const reordered = arrayMove(prev, oldIndex, newIndex)
+        onReorder?.(reordered)
+        return reordered
+      })
+    }
+  }
+
   if (loading) {
     return (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="overflow-hidden rounded-2xl border border-white/60 bg-white/70 shadow-sm backdrop-blur-md divide-y divide-slate-100 animate-pulse">
         {SKELETON_KEYS.map((i) => (
-          <ListCardSkeleton key={i} />
+          <ListRowSkeleton key={i} />
         ))}
       </div>
     )
   }
 
-  if (lists.length === 0) {
+  if (ordered.length === 0) {
     return <>{emptyState}</>
   }
 
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="grid grid-cols-1 gap-4 sm:grid-cols-2"
-    >
-      {lists.map((list) => (
-        <ListCard key={list.id} list={list} />
-      ))}
-    </motion.div>
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <SortableContext items={ordered.map((l) => l.id)} strategy={verticalListSortingStrategy}>
+        <div className="overflow-hidden rounded-2xl border border-white/60 bg-white/70 shadow-sm backdrop-blur-md divide-y divide-slate-100">
+          {ordered.map((list) => (
+            <ListCard key={list.id} list={list} />
+          ))}
+        </div>
+      </SortableContext>
+    </DndContext>
   )
 }
+
+

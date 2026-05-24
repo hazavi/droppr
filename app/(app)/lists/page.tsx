@@ -9,6 +9,8 @@ import { useLists } from "@/hooks/useLists"
 import { ListGrid } from "@/components/list/list-grid"
 import { CreateListModal } from "@/components/modals/create-list-modal"
 import { EmptyState } from "@/components/shared/empty-state"
+import { reorderLists } from "@/lib/firestore"
+import type { ItemList } from "@/types"
 
 export default function ListsPage() {
   const { user } = useAuthContext()
@@ -16,8 +18,13 @@ export default function ListsPage() {
   const { lists, loading } = useLists(user?.uid ?? null)
   const [showCreate, setShowCreate] = useState(false)
 
+  async function handleReorder(newLists: ItemList[]) {
+    if (!user) return
+    await reorderLists(user.uid, newLists.map((l, i) => ({ id: l.id, order: i })))
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-4xl space-y-6">
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -42,6 +49,7 @@ export default function ListsPage() {
       <ListGrid
         lists={lists}
         loading={loading}
+        onReorder={handleReorder}
         emptyState={
           <EmptyState
             icon={FolderOpen}
@@ -63,7 +71,7 @@ export default function ListsPage() {
       <CreateListModal
         open={showCreate}
         onClose={() => setShowCreate(false)}
-        onCreated={() => router.push("/dashboard")}
+        onCreated={() => router.push("/home")}
       />
     </div>
   )

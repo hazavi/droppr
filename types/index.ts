@@ -28,6 +28,9 @@ export interface ItemList {
   id: string
   name: string
   category: string
+  icon?: string
+  iconType?: "emoji" | "icon"
+  order?: number
   createdAt: Date
   itemCount?: number
 }
@@ -44,6 +47,7 @@ export interface ScrapeResult {
   name: string
   image: string
   price: number
+  comparePrice?: number
   currency: string
   siteName: string
 }
