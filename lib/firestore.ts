@@ -16,6 +16,8 @@ import {
   Timestamp,
   type Unsubscribe,
   writeBatch,
+  increment,
+  getCountFromServer,
 } from "firebase/firestore"
 import { db } from "./firebase"
 import type { TrackedItem, ItemList, UserProfile, PricePoint } from "@/types"
@@ -104,10 +106,22 @@ export function subscribeToLists(
   return onSnapshot(
     q,
     (snap) => {
-      const lists = snap.docs.map((d) =>
-        toItemList(d.id, d.data() as Record<string, unknown>)
+      // Fetch real item count from each list's items subcollection
+      Promise.all(
+        snap.docs.map(async (d) => {
+          const list = toItemList(d.id, d.data() as Record<string, unknown>)
+          const countSnap = await getCountFromServer(
+            collection(db, "users", uid, "lists", d.id, "items")
+          )
+          list.itemCount = countSnap.data().count
+          return list
+        })
       )
-      callback(lists)
+        .then(callback)
+        .catch((err: Error) => {
+          if (onError) onError(err)
+          else console.error("[Firestore] subscribeToLists (count):", err.message)
+        })
     },
     (err) => {
       if (onError) onError(err)
@@ -122,6 +136,7 @@ export async function createList(
 ): Promise<string> {
   const ref = await addDoc(collection(db, "users", uid, "lists"), {
     ...data,
+    itemCount: 0,
     createdAt: serverTimestamp(),
   })
   return ref.id
@@ -291,6 +306,9 @@ export async function addItem(
       lastChecked: serverTimestamp(),
     }
   )
+  await updateDoc(doc(db, "users", uid, "lists", listId), {
+    itemCount: increment(1),
+  })
   return ref.id
 }
 
@@ -312,6 +330,9 @@ export async function deleteItem(
   itemId: string
 ): Promise<void> {
   await deleteDoc(doc(db, "users", uid, "lists", listId, "items", itemId))
+  await updateDoc(doc(db, "users", uid, "lists", listId), {
+    itemCount: increment(-1),
+  })
 }
 
 export async function deleteItems(
@@ -323,6 +344,9 @@ export async function deleteItems(
   itemIds.forEach((id) =>
     batch.delete(doc(db, "users", uid, "lists", listId, "items", id))
   )
+  batch.update(doc(db, "users", uid, "lists", listId), {
+    itemCount: increment(-itemIds.length),
+  })
   await batch.commit()
 }
 
@@ -333,6 +357,7 @@ export async function moveItems(
   itemIds: string[]
 ): Promise<void> {
   const batch = writeBatch(db)
+  let moved = 0
   for (const itemId of itemIds) {
     const snap = await getDoc(
       doc(db, "users", uid, "lists", fromListId, "items", itemId)
@@ -341,7 +366,12 @@ export async function moveItems(
       const newRef = doc(db, "users", uid, "lists", toListId, "items", itemId)
       batch.set(newRef, snap.data())
       batch.delete(snap.ref)
+      moved++
     }
+  }
+  if (moved > 0) {
+    batch.update(doc(db, "users", uid, "lists", fromListId), { itemCount: increment(-moved) })
+    batch.update(doc(db, "users", uid, "lists", toListId), { itemCount: increment(moved) })
   }
   await batch.commit()
 }

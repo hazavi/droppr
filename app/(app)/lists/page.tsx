@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { FolderOpen, Plus } from "lucide-react"
 import { useAuthContext } from "@/components/providers/auth-provider"
@@ -11,6 +12,7 @@ import { EmptyState } from "@/components/shared/empty-state"
 
 export default function ListsPage() {
   const { user } = useAuthContext()
+  const router = useRouter()
   const { lists, loading } = useLists(user?.uid ?? null)
   const [showCreate, setShowCreate] = useState(false)
 
@@ -61,6 +63,7 @@ export default function ListsPage() {
       <CreateListModal
         open={showCreate}
         onClose={() => setShowCreate(false)}
+        onCreated={() => router.push("/dashboard")}
       />
     </div>
   )

@@ -21,23 +21,28 @@ export function ListCard({ list }: ListCardProps) {
     <motion.div variants={cardVariants} initial="hidden" animate="visible">
       <Link href={`/lists/${list.id}`} className="group block">
         <GlassEffect className="rounded-2xl transition-all duration-300 hover:scale-[1.01]">
-          <div className="flex items-center justify-between p-5">
-            <div className="flex items-center gap-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">
-                <FolderOpen className="h-5 w-5 text-slate-500" />
-              </div>
-              <div>
-                <p className="font-semibold text-slate-900">{list.name}</p>
-                <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-400">
-                  <span className="rounded-md bg-slate-100 px-1.5 py-0.5">{list.category}</span>
-                  <span>·</span>
-                  <span>{list.itemCount ?? 0} item{list.itemCount !== 1 ? "s" : ""}</span>
-                  <span>·</span>
-                  <span>{formatRelativeTime(list.createdAt)}</span>
+          <div className="p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100">
+                  <FolderOpen className="h-5 w-5 text-slate-500" />
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900">{list.name}</p>
+                  <span className="mt-0.5 inline-block rounded-md bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">
+                    {list.category}
+                  </span>
                 </div>
               </div>
+              <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-slate-500" />
             </div>
-            <ChevronRight className="h-4 w-4 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-slate-500" />
+
+            <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
+              <span className="text-sm font-semibold text-slate-700">
+                {list.itemCount ?? 0} {(list.itemCount ?? 0) === 1 ? "item" : "items"}
+              </span>
+              <span className="text-xs text-slate-400">{formatRelativeTime(list.createdAt)}</span>
+            </div>
           </div>
         </GlassEffect>
       </Link>
