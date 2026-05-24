@@ -186,7 +186,7 @@ export default function ListDetailPage({
                 onClick={() => setShowAdd(true)}
                 className="flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 transition-colors"
               >
-                <PlusIcon className="h-4 w-4" />
+                <Plus className="h-4 w-4" />
                 Add first item
               </button>
             }
