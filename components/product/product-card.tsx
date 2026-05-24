@@ -93,7 +93,7 @@ export const ProductCard = memo(function ProductCard({
             <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
               {item.siteName}
             </p>
-            <p className="mt-1 line-clamp-2 text-sm font-medium text-slate-800">
+            <p className="mt-1 truncate text-sm font-medium text-slate-800" title={item.name}>
               {item.name}
             </p>
           </div>

@@ -96,7 +96,7 @@ export function Dock() {
                   "flex h-11 w-11 items-center justify-center rounded-2xl transition-colors duration-150",
                   active
                     ? "bg-slate-900 text-white shadow-sm"
-                    : "text-slate-500 hover:bg-white/60 hover:text-slate-800"
+                    : "text-slate-500 hover:text-slate-800"
                 )}
               >
                 <item.icon className="h-[18px] w-[18px]" strokeWidth={active ? 2.2 : 1.8} />
