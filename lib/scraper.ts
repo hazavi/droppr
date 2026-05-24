@@ -231,7 +231,8 @@ export async function scrapeProduct(
       }
 
       // 2. Always scan ALL JSON-LD blocks — use for currency regardless of whether
-      //    CSS already found a price, and use for rawPrice as fallback if CSS missed it.
+      //    CSS already found a price, and use for rawPrice/image as fallback if CSS missed it.
+      let jsonLdImage: string | null = null
       const jsonLdScripts = Array.from(
         document.querySelectorAll('script[type="application/ld+json"]')
       )
@@ -248,6 +249,15 @@ export async function scrapeProduct(
               (schema as Record<string, unknown>)
             if (!rawPrice && offers?.price) rawPrice = String(offers.price)
             if (!currency && offers?.priceCurrency) currency = String(offers.priceCurrency)
+            // Extract image from schema (may be string or array)
+            if (!jsonLdImage && schema.image) {
+              const img = schema.image
+              if (typeof img === "string") jsonLdImage = img
+              else if (Array.isArray(img) && typeof img[0] === "string") jsonLdImage = img[0]
+              else if (typeof img === "object" && (img as Record<string, unknown>).url) {
+                jsonLdImage = String((img as Record<string, unknown>).url)
+              }
+            }
             if (rawPrice && currency) break outer
           }
         } catch {
@@ -284,10 +294,33 @@ export async function scrapeProduct(
         document.querySelector('meta[name="og:title"]')?.getAttribute("content") ??
         pageTitle
 
-      const ogImage =
+      // Image: try OG, Twitter card, JSON-LD schema, link[image_src], then largest <img>
+      const rawOgImage =
         document.querySelector('meta[property="og:image"]')?.getAttribute("content") ??
-        document.querySelector('meta[name="og:image"]')?.getAttribute("content") ??
-        ""
+        document.querySelector('meta[property="og:image:url"]')?.getAttribute("content") ??
+        document.querySelector('meta[name="twitter:image"]')?.getAttribute("content") ??
+        document.querySelector('meta[name="twitter:image:src"]')?.getAttribute("content") ??
+        document.querySelector('link[rel="image_src"]')?.getAttribute("href") ??
+        jsonLdImage ??
+        null
+
+      // If no meta image, fall back to the largest visible <img> on the page
+      let ogImage = rawOgImage ?? ""
+      if (!ogImage) {
+        let bestImg = ""
+        let bestArea = 0
+        document.querySelectorAll("img[src]").forEach((el) => {
+          const img = el as HTMLImageElement
+          const src = img.getAttribute("src") ?? ""
+          if (!src || src.startsWith("data:") || src.includes("logo") || src.includes("icon")) return
+          const area = img.naturalWidth * img.naturalHeight || img.width * img.height
+          if (area > bestArea) { bestArea = area; bestImg = src }
+        })
+        ogImage = bestImg
+      }
+
+      // Resolve protocol-relative URLs (//example.com/img.jpg)
+      if (ogImage.startsWith("//")) ogImage = "https:" + ogImage
 
       // Facebook/Open Graph product meta — many Shopify/BigCommerce/Magento sites use these
       if (!rawPrice) {

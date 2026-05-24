@@ -112,7 +112,7 @@ export default function DashboardPage() {
           <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
             {recentDrops.map((item, i) => (
               <div key={item.id} className="w-48 shrink-0">
-                <ProductCard item={item} listId="" priority={i === 0} />
+                <ProductCard item={item} listId="" priority={i < 3} />
               </div>
             ))}
           </div>
@@ -142,8 +142,8 @@ export default function DashboardPage() {
           />
         ) : (
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {recentAdded.map((item) => (
-              <ProductCard key={item.id} item={item} listId="" />
+            {recentAdded.map((item, i) => (
+              <ProductCard key={item.id} item={item} listId="" priority={i < 3} />
             ))}
           </div>
         )}

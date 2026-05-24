@@ -26,7 +26,6 @@ interface ProductCardProps {
 
 export const ProductCard = memo(function ProductCard({
   item,
-  listId,
   isSelected,
   onSelect,
   priority = false,
