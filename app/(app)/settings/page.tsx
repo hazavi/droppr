@@ -105,8 +105,8 @@ export default function SettingsPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <h1 className="text-2xl font-bold text-neutral-100">Settings</h1>
-        <p className="mt-1 text-sm text-neutral-500">
+        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
+        <p className="mt-1 text-sm text-slate-500">
           Manage your account and preferences
         </p>
       </motion.div>
@@ -116,23 +116,23 @@ export default function SettingsPage() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.05 }}
-        className="rounded-2xl border border-white/10 bg-[#111] p-6"
+        className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm"
       >
         <div className="mb-5 flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/15">
-            <User className="h-4 w-4 text-indigo-400" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50">
+            <User className="h-4 w-4 text-indigo-500" />
           </div>
-          <h2 className="text-base font-semibold text-neutral-200">Profile</h2>
+          <h2 className="text-base font-semibold text-slate-800">Profile</h2>
         </div>
 
         <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-neutral-300">
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">
               Display name
             </label>
             <input
               {...profileForm.register("displayName")}
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-neutral-100 placeholder-neutral-600 outline-none transition focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/40"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/40 shadow-sm"
             />
             {profileForm.formState.errors.displayName && (
               <p className="mt-1 text-xs text-red-400">
@@ -142,20 +142,20 @@ export default function SettingsPage() {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-neutral-300">
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">
               Notification email
             </label>
             <input
               {...profileForm.register("email")}
               type="email"
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-neutral-100 placeholder-neutral-600 outline-none transition focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/40"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/40 shadow-sm"
             />
             {profileForm.formState.errors.email && (
-              <p className="mt-1 text-xs text-red-400">
+              <p className="mt-1 text-xs text-red-500">
                 {profileForm.formState.errors.email.message}
               </p>
             )}
-            <p className="mt-1.5 text-xs text-neutral-500">
+            <p className="mt-1.5 text-xs text-slate-400">
               Price drop alerts are sent to this address
             </p>
           </div>
@@ -176,20 +176,20 @@ export default function SettingsPage() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.1 }}
-        className="rounded-2xl border border-white/10 bg-[#111] p-6"
+        className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm"
       >
         <div className="mb-5 flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/15">
-            <Bell className="h-4 w-4 text-indigo-400" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50">
+            <Bell className="h-4 w-4 text-indigo-500" />
           </div>
-          <h2 className="text-base font-semibold text-neutral-200">Notifications</h2>
+          <h2 className="text-base font-semibold text-slate-800">Notifications</h2>
         </div>
 
         <form onSubmit={notifForm.handleSubmit(onNotifSubmit)} className="space-y-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-medium text-neutral-300">Email notifications</p>
-              <p className="mt-0.5 text-xs text-neutral-500">
+              <p className="text-sm font-medium text-slate-700">Email notifications</p>
+              <p className="mt-0.5 text-xs text-slate-400">
                 Receive email alerts when tracked prices drop
               </p>
             </div>
@@ -199,7 +199,7 @@ export default function SettingsPage() {
                 {...notifForm.register("emailNotificationsEnabled")}
                 className="sr-only peer"
               />
-              <div className="h-5 w-9 rounded-full bg-white/10 peer-checked:bg-indigo-600 peer-focus:ring-2 peer-focus:ring-indigo-500/40 transition-colors after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-4" />
+              <div className="h-5 w-9 rounded-full bg-slate-200 peer-checked:bg-indigo-600 peer-focus:ring-2 peer-focus:ring-indigo-400/40 transition-colors after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-4" />
             </label>
           </div>
 
@@ -222,34 +222,34 @@ export default function SettingsPage() {
         className="rounded-2xl border border-red-500/20 bg-red-500/5 p-6"
       >
         <div className="mb-5 flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-500/15">
-            <AlertTriangle className="h-4 w-4 text-red-400" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50">
+            <AlertTriangle className="h-4 w-4 text-red-500" />
           </div>
-          <h2 className="text-base font-semibold text-neutral-200">Danger Zone</h2>
+          <h2 className="text-base font-semibold text-slate-800">Danger Zone</h2>
         </div>
 
         {!showDeleteZone ? (
           <div>
-            <p className="text-sm text-neutral-500 mb-3">
+            <p className="text-sm text-slate-500 mb-3">
               Permanently delete your account and all tracked data. This cannot be undone.
             </p>
             <button
               onClick={() => setShowDeleteZone(true)}
-              className="rounded-lg border border-red-500/30 px-4 py-2.5 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/10"
+              className="rounded-lg border border-red-200 px-4 py-2.5 text-sm font-medium text-red-500 transition-colors hover:bg-red-50"
             >
               Delete account
             </button>
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-sm text-neutral-300">
-              Type <strong className="text-neutral-100">delete my account</strong> to confirm:
+            <p className="text-sm text-slate-700">
+              Type <strong className="text-slate-900">delete my account</strong> to confirm:
             </p>
             <input
               value={deleteConfirm}
               onChange={(e) => setDeleteConfirm(e.target.value)}
               placeholder="delete my account"
-              className="w-full rounded-lg border border-red-500/30 bg-white/5 px-3 py-2.5 text-sm text-neutral-100 placeholder-neutral-600 outline-none transition focus:border-red-500/60 focus:ring-1 focus:ring-red-500/40"
+              className="w-full rounded-lg border border-red-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-red-400 focus:ring-1 focus:ring-red-400/40 shadow-sm"
             />
             <div className="flex gap-3">
               <button
@@ -257,7 +257,7 @@ export default function SettingsPage() {
                   setShowDeleteZone(false)
                   setDeleteConfirm("")
                 }}
-                className="rounded-lg border border-white/10 px-4 py-2 text-sm font-medium text-neutral-400 hover:bg-white/5 transition-colors"
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50 transition-colors"
               >
                 Cancel
               </button>

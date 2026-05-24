@@ -75,38 +75,18 @@ export const GlassEffect: React.FC<GlassEffectProps> = ({
   onClick,
 }) => (
   <div
-    className={`relative overflow-hidden cursor-pointer transition-all duration-500 ${className}`}
+    className={`relative overflow-hidden transition-all duration-500 ${className}`}
     style={{
-      boxShadow: "0 6px 24px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.08)",
-      transitionTimingFunction: "cubic-bezier(0.175, 0.885, 0.32, 2.2)",
+      background: "rgba(255,255,255,0.65)",
+      backdropFilter: "blur(20px) saturate(180%)",
+      WebkitBackdropFilter: "blur(20px) saturate(180%)",
+      boxShadow: "0 4px 24px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.9)",
+      border: "1px solid rgba(255,255,255,0.75)",
       ...style,
     }}
     onClick={onClick}
   >
-    {/* Blur + distortion */}
-    <div
-      className="absolute inset-0 z-0 rounded-[inherit]"
-      style={{
-        backdropFilter: "blur(16px) saturate(180%)",
-        filter: "url(#glass-distortion)",
-        isolation: "isolate",
-      }}
-    />
-    {/* Tint */}
-    <div
-      className="absolute inset-0 z-10 rounded-[inherit]"
-      style={{ background: "rgba(255,255,255,0.08)" }}
-    />
-    {/* Inner bevel highlight */}
-    <div
-      className="absolute inset-0 z-20 rounded-[inherit]"
-      style={{
-        boxShadow:
-          "inset 1px 1px 0 rgba(255,255,255,0.35), inset -1px -1px 0 rgba(255,255,255,0.12)",
-      }}
-    />
-    {/* Content */}
-    <div className="relative z-30">{children}</div>
+    <div className="relative z-10">{children}</div>
   </div>
 )
 

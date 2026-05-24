@@ -129,7 +129,7 @@ export function TrackItemBox() {
                 {/* Product preview row */}
                 <div className="flex items-center gap-4 p-4">
                   {scraped.image && (
-                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white/5">
+                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-slate-100">
                       <Image
                         src={scraped.image}
                         alt={scraped.name}
@@ -140,13 +140,13 @@ export function TrackItemBox() {
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="select-none text-xs font-medium uppercase tracking-wider text-white/40">
+                    <p className="select-none text-xs font-medium uppercase tracking-wider text-slate-400">
                       {scraped.siteName}
                     </p>
-                    <p className="mt-0.5 truncate text-sm font-semibold text-white">
+                    <p className="mt-0.5 truncate text-sm font-semibold text-slate-900">
                       {scraped.name}
                     </p>
-                    <p className="mt-0.5 font-mono text-lg font-bold text-white">
+                    <p className="mt-0.5 font-mono text-lg font-bold text-slate-900">
                       {formatPrice(scraped.price, scraped.currency)}
                     </p>
                   </div>
@@ -157,9 +157,9 @@ export function TrackItemBox() {
                       <motion.div
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-500/20"
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100"
                       >
-                        <CheckCircle className="h-5 w-5 text-green-400" />
+                        <CheckCircle className="h-5 w-5 text-emerald-600" />
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -167,10 +167,10 @@ export function TrackItemBox() {
 
                 {/* Config row */}
                 {!done && (
-                  <div className="flex flex-wrap items-end gap-3 border-t border-white/8 bg-white/[0.03] px-4 py-3">
+                  <div className="flex flex-wrap items-end gap-3 border-t border-slate-100 bg-slate-50/60 px-4 py-3">
                     {/* List selector */}
                     <div className="flex-1 min-w-[150px] space-y-1.5">
-                      <p className="select-none flex items-center gap-1.5 text-xs text-white/40">
+                      <p className="select-none flex items-center gap-1.5 text-xs text-slate-400">
                         <FolderOpen className="h-3 w-3" />
                         Save to list
                       </p>
@@ -184,45 +184,43 @@ export function TrackItemBox() {
                               setSelectedListId(e.target.value)
                             }
                           }}
-                          className="w-full appearance-none rounded-xl border border-white/10 bg-white/5 px-3 py-2 pr-8 text-sm text-white outline-none focus:border-white/20 transition-colors cursor-pointer"
+                          className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-3 py-2 pr-8 text-sm text-slate-800 outline-none focus:border-slate-300 transition-colors cursor-pointer shadow-sm"
                         >
                           {lists.length === 0 && (
-                            <option value="" disabled className="bg-[#111]">No lists yet</option>
+                            <option value="" disabled>No lists yet</option>
                           )}
                           {lists.map((l) => (
-                            <option key={l.id} value={l.id} className="bg-[#111]">
+                            <option key={l.id} value={l.id}>
                               {l.name}
                             </option>
                           ))}
-                          <option value="__new__" className="bg-[#111]">+ Create new list</option>
+                          <option value="__new__">+ Create new list</option>
                         </select>
-                        <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/30" />
+                        <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                       </div>
                     </div>
 
                     {/* Alert config */}
                     <div className="flex-1 min-w-[200px] space-y-1.5">
-                      <p className="select-none flex items-center gap-1.5 text-xs text-white/40">
+                      <p className="select-none flex items-center gap-1.5 text-xs text-slate-400">
                         <Bell className="h-3 w-3" />
                         Alert me on
                       </p>
-                      {/* Mode toggle — value input is embedded inside the pill when needed */}
-                      <div className="flex rounded-xl border border-white/10 bg-white/5 overflow-hidden">
+                      <div className="flex rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
                         {(["any", "percent", "fixed"] as AlertMode[]).map((mode) => (
                           <button
                             key={mode}
                             type="button"
                             onClick={() => setAlertMode(mode)}
-                            className={`px-3 py-2 text-xs font-medium transition-colors border-r border-white/10 last:border-r-0 ${
+                            className={`px-3 py-2 text-xs font-medium transition-colors border-r border-slate-100 last:border-r-0 ${
                               alertMode === mode
-                                ? "bg-white/15 text-white"
-                                : "text-white/40 hover:text-white/60"
+                                ? "bg-slate-900 text-white"
+                                : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
                             }`}
                           >
                             {mode === "any" ? "Any change" : mode === "percent" ? "% drop" : "$ drop"}
                           </button>
                         ))}
-                        {/* Value input embedded inside pill */}
                         <AnimatePresence>
                           {alertMode !== "any" && (
                             <motion.input
@@ -236,7 +234,7 @@ export function TrackItemBox() {
                               step={alertMode === "percent" ? 1 : 0.01}
                               value={alertValue}
                               onChange={(e) => setAlertValue(Number(e.target.value))}
-                              className="w-14 border-l border-white/10 bg-transparent px-2 py-2 text-sm text-white text-center outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                              className="w-14 border-l border-slate-100 bg-transparent px-2 py-2 text-sm text-slate-800 text-center outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
                             />
                           )}
                         </AnimatePresence>
@@ -247,7 +245,7 @@ export function TrackItemBox() {
                     <button
                       onClick={handleSave}
                       disabled={saving || !selectedListId}
-                      className="flex h-[42px] shrink-0 items-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-black transition-all hover:bg-white/90 disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="flex h-[42px] shrink-0 items-center gap-2 rounded-xl bg-slate-900 px-5 text-sm font-semibold text-white transition-all hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
                     >
                       {saving ? (
                         <><Loader2 className="h-4 w-4 animate-spin" />Saving…</>

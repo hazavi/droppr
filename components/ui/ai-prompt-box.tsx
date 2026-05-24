@@ -127,8 +127,8 @@ const PromptInput = React.forwardRef<HTMLDivElement, PromptInputProps>(
           <div
             ref={ref}
             className={cn(
-              "rounded-3xl border border-white/10 bg-white/5 p-2 shadow-xl backdrop-blur-xl transition-all duration-300",
-              isLoading && "border-indigo-500/50",
+              "rounded-3xl border border-slate-200/80 bg-white/80 p-2 shadow-sm backdrop-blur-xl transition-all duration-300",
+              isLoading && "border-indigo-300",
               className
             )}
           >
@@ -166,7 +166,7 @@ const PromptTextarea: React.FC<{ placeholder?: string; className?: string }> = (
       disabled={disabled}
       placeholder={placeholder}
       className={cn(
-        "w-full resize-none bg-transparent px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none disabled:opacity-50",
+        "w-full resize-none bg-transparent px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none disabled:opacity-50",
         className
       )}
     />
@@ -232,7 +232,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, PromptInputBoxPro
 
         <PromptActions className="justify-between px-1 pt-1">
           {/* Left: hint icon */}
-          <div className="flex items-center gap-2 text-white/30">
+          <div className="flex items-center gap-2 text-slate-400">
             <Link2 className="h-4 w-4" />
             <span className="text-xs">Paste any product link</span>
           </div>
@@ -245,8 +245,8 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, PromptInputBoxPro
               className={cn(
                 "flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200",
                 hasContent && !isLoading
-                  ? "bg-white text-black hover:bg-white/90"
-                  : "bg-white/10 text-white/30 cursor-not-allowed"
+                  ? "bg-slate-900 text-white hover:bg-slate-800"
+                  : "bg-slate-100 text-slate-300 cursor-not-allowed"
               )}
             >
               {isLoading

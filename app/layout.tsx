@@ -27,17 +27,17 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-[#0a0a0a] text-neutral-100">
+      <body className="min-h-full bg-zinc-50 text-slate-900">
         <AuthProvider>
           {children}
           <Toaster
             position="bottom-right"
-            theme="dark"
+            theme="light"
             toastOptions={{
               classNames: {
-                toast: "border-white/10 bg-[#1a1a1a]",
+                toast: "border-slate-200 bg-white shadow-lg",
               },
             }}
           />

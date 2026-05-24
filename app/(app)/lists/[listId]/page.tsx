@@ -83,25 +83,25 @@ export default function ListDetailPage({
       >
         <Link
           href="/lists"
-          className="mb-4 flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-300 transition-colors"
+          className="mb-4 flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-700 transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           All Lists
         </Link>
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-neutral-100">
+            <h1 className="text-2xl font-bold text-slate-900">
               {list?.name ?? "List"}
             </h1>
             {list?.category && (
-              <span className="mt-1.5 inline-block rounded-md bg-white/5 px-2 py-0.5 text-xs text-neutral-500">
+              <span className="mt-1.5 inline-block rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
                 {list.category}
               </span>
             )}
           </div>
           <button
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-500"
+            className="flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
           >
             <Plus className="h-4 w-4" />
             Add Item
@@ -116,14 +116,14 @@ export default function ListDetailPage({
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#111] px-4 py-3"
+            className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white/80 px-4 py-3 shadow-sm"
           >
-            <span className="text-sm font-medium text-neutral-300">
+            <span className="text-sm font-medium text-slate-700">
               {selectedIds.length} selected
             </span>
             <button
               onClick={() => setSelectedIds([])}
-              className="text-xs text-neutral-500 hover:text-neutral-300"
+              className="text-xs text-slate-400 hover:text-slate-700"
             >
               Clear
             </button>
@@ -132,7 +132,7 @@ export default function ListDetailPage({
                 <button
                   onClick={() => setShowMoveMenu((v) => !v)}
                   disabled={bulkLoading || otherLists.length === 0}
-                  className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-neutral-300 hover:bg-white/5 disabled:opacity-50"
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
                 >
                   <MoveRight className="h-3.5 w-3.5" />
                   Move to
@@ -143,13 +143,13 @@ export default function ListDetailPage({
                       initial={{ opacity: 0, y: 4 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 4 }}
-                      className="absolute right-0 top-8 z-20 min-w-[160px] rounded-xl border border-white/10 bg-[#1a1a1a] p-1 shadow-2xl"
+                      className="absolute right-0 top-8 z-20 min-w-[160px] rounded-xl border border-slate-200 bg-white p-1 shadow-lg"
                     >
                       {otherLists.map((l) => (
                         <button
                           key={l.id}
                           onClick={() => handleMove(l.id)}
-                          className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-neutral-300 hover:bg-white/5"
+                          className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
                         >
                           {l.name}
                         </button>
@@ -186,7 +186,7 @@ export default function ListDetailPage({
             action={
               <button
                 onClick={() => setShowAdd(true)}
-                className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 transition-colors"
+                className="flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 transition-colors"
               >
                 <PlusIcon className="h-4 w-4" />
                 Add first item

@@ -17,8 +17,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#0a0a0a]">
-        <div className="h-8 w-8 animate-pulse rounded-full bg-white/20" />
+      <div className="flex h-screen items-center justify-center bg-zinc-50">
+        <div className="h-8 w-8 animate-pulse rounded-full bg-slate-200" />
       </div>
     )
   }
@@ -26,41 +26,24 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   if (!user) return null
 
   return (
-    <div
-      className="relative min-h-screen overflow-hidden"
-      style={{
-        background:
-          "radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.15) 0%, transparent 60%), " +
-          "radial-gradient(ellipse at 80% 20%, rgba(168,85,247,0.12) 0%, transparent 55%), " +
-          "radial-gradient(ellipse at 60% 80%, rgba(59,130,246,0.1) 0%, transparent 50%), " +
-          "#0a0a0a",
-      }}
-    >
-      {/* Subtle animated orbs */}
-      <div
-        className="pointer-events-none fixed inset-0 z-0"
-        aria-hidden="true"
-      >
+    <div className="relative min-h-screen bg-zinc-50">
+      {/* Aurora background layer */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">
         <div
-          className="absolute left-[15%] top-[20%] h-96 w-96 rounded-full opacity-20 blur-3xl"
-          style={{
-            background: "radial-gradient(circle, rgba(99,102,241,0.6), transparent 70%)",
-            animation: "float 8s ease-in-out infinite",
-          }}
-        />
-        <div
-          className="absolute right-[15%] top-[55%] h-72 w-72 rounded-full opacity-15 blur-3xl"
-          style={{
-            background: "radial-gradient(circle, rgba(168,85,247,0.6), transparent 70%)",
-            animation: "float 11s ease-in-out infinite reverse",
-          }}
-        />
-        <div
-          className="absolute left-[55%] bottom-[20%] h-64 w-64 rounded-full opacity-10 blur-3xl"
-          style={{
-            background: "radial-gradient(circle, rgba(59,130,246,0.7), transparent 70%)",
-            animation: "float 9s ease-in-out infinite 2s",
-          }}
+          className={[
+            "absolute -inset-[10px] opacity-40 will-change-transform",
+            "[--white-gradient:repeating-linear-gradient(100deg,var(--white)_0%,var(--white)_7%,var(--transparent)_10%,var(--transparent)_12%,var(--white)_16%)]",
+            "[--aurora:repeating-linear-gradient(100deg,var(--blue-500)_10%,var(--indigo-300)_15%,var(--blue-300)_20%,var(--violet-200)_25%,var(--blue-400)_30%)]",
+            "[background-image:var(--white-gradient),var(--aurora)]",
+            "[background-size:300%,_200%]",
+            "[background-position:50%_50%,50%_50%]",
+            "filter blur-[10px] invert",
+            "after:content-[''] after:absolute after:inset-0",
+            "after:[background-image:var(--white-gradient),var(--aurora)]",
+            "after:[background-size:200%,_100%]",
+            "after:animate-aurora after:[background-attachment:fixed] after:mix-blend-difference",
+            "[mask-image:radial-gradient(ellipse_at_80%_0%,black_10%,transparent_70%)]",
+          ].join(" ")}
         />
       </div>
 

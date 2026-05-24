@@ -63,14 +63,14 @@ export const ProductCard = memo(function ProductCard({
 
         {/* Sale badge */}
         {hasDrop && (
-          <span className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full bg-green-500/25 px-2.5 py-1 text-xs font-semibold text-green-300 backdrop-blur-sm">
+          <span className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700 border border-emerald-200">
             <TrendingDown className="h-3 w-3" />
             -{item.priceDropPercent}%
           </span>
         )}
 
         {/* Product image */}
-        <div className="relative aspect-square w-full overflow-hidden rounded-t-2xl bg-white/5">
+        <div className="relative aspect-square w-full overflow-hidden rounded-t-2xl bg-slate-100">
           {item.image ? (
             <Image
               src={item.image}
@@ -90,10 +90,10 @@ export const ProductCard = memo(function ProductCard({
         {/* Info */}
         <div className="flex flex-1 flex-col gap-3 p-4">
           <div>
-            <p className="text-xs font-medium text-white/40 uppercase tracking-wider">
+            <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
               {item.siteName}
             </p>
-            <p className="mt-1 line-clamp-2 text-sm font-medium text-white">
+            <p className="mt-1 line-clamp-2 text-sm font-medium text-slate-800">
               {item.name}
             </p>
           </div>
@@ -104,28 +104,28 @@ export const ProductCard = memo(function ProductCard({
               <span
                 className={cn(
                   "text-lg font-bold font-mono",
-                  hasDrop ? "text-green-400" : "text-neutral-100"
+                  hasDrop ? "text-emerald-600" : "text-slate-900"
                 )}
               >
                 {formatPrice(item.currentPrice, item.currency)}
               </span>
               {hasDrop && (
-                <span className="text-sm text-white/30 line-through font-mono">
+                <span className="text-sm text-slate-400 line-through font-mono">
                   {formatPrice(item.originalPrice, item.currency)}
                 </span>
               )}
             </div>
 
             {hasDrop && (
-              <p className="mt-0.5 text-xs text-green-400/80">
+              <p className="mt-0.5 text-xs text-emerald-600">
                 Save {formatPrice(item.priceDrop, item.currency)}
               </p>
             )}
           </div>
 
           {/* Footer row */}
-          <div className="flex items-center justify-between border-t border-white/10 pt-3">
-            <span className="flex items-center gap-1 text-xs text-white/30">
+          <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+            <span className="flex items-center gap-1 text-xs text-slate-400">
               <Clock className="h-3 w-3" />
               {formatRelativeTime(item.lastChecked)}
             </span>
@@ -133,7 +133,7 @@ export const ProductCard = memo(function ProductCard({
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
               onClick={(e) => e.stopPropagation()}
             >
               View <ExternalLink className="h-3 w-3" />
