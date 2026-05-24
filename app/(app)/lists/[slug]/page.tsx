@@ -1,18 +1,56 @@
 "use client"
 
-import { useState, use } from "react"
+import { useState, use, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ArrowLeft, Plus, Trash2, MoveRight, Package } from "lucide-react"
+import {
+  ArrowLeft,
+  Trash2,
+  MoveRight,
+  Package,
+  LayoutGrid,
+  List,
+  ChevronDown,
+} from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { useAuthContext } from "@/components/providers/auth-provider"
 import { useItems } from "@/hooks/useItems"
 import { useLists } from "@/hooks/useLists"
 import { deleteItems, moveItems } from "@/lib/firestore"
-import { toSlug } from "@/lib/utils"
+import { toSlug, cn } from "@/lib/utils"
 import { ProductGrid } from "@/components/product/product-grid"
-import { AddItemModal } from "@/components/modals/add-item-modal"
 import { EmptyState } from "@/components/shared/empty-state"
+import type { TrackedItem } from "@/types"
+import type { ViewMode } from "@/components/product/product-grid"
+
+type SortBy = "newest" | "oldest" | "price-asc" | "price-desc" | "name" | "drop"
+
+const SORT_OPTIONS: { value: SortBy; label: string }[] = [
+  { value: "newest",     label: "Newest first" },
+  { value: "oldest",     label: "Oldest first" },
+  { value: "price-asc",  label: "Price: low → high" },
+  { value: "price-desc", label: "Price: high → low" },
+  { value: "name",       label: "Name (A–Z)" },
+  { value: "drop",       label: "Biggest drop" },
+]
+
+const VIEW_TOGGLE: { mode: ViewMode; Icon: typeof LayoutGrid; label: string }[] = [
+  { mode: "4",    Icon: LayoutGrid, label: "4 per row" },
+  { mode: "list", Icon: List,       label: "List view" },
+]
+
+function sortItems(items: TrackedItem[], by: SortBy): TrackedItem[] {
+  return [...items].sort((a, b) => {
+    switch (by) {
+      case "newest":     return b.createdAt.getTime() - a.createdAt.getTime()
+      case "oldest":     return a.createdAt.getTime() - b.createdAt.getTime()
+      case "price-asc":  return a.currentPrice - b.currentPrice
+      case "price-desc": return b.currentPrice - a.currentPrice
+      case "name":       return a.name.localeCompare(b.name)
+      case "drop":       return b.priceDropPercent - a.priceDropPercent
+    }
+  })
+}
 
 export default function ListDetailPage({
   params,
@@ -25,15 +63,24 @@ export default function ListDetailPage({
   const list = lists.find((l) => toSlug(l.name) === slug) ?? null
   const listId = list?.id ?? null
   const { items, loading } = useItems(user?.uid ?? null, listId)
-  const [showAdd, setShowAdd] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [bulkLoading, setBulkLoading] = useState(false)
   const [showMoveMenu, setShowMoveMenu] = useState(false)
+  const [viewMode, setViewMode] = useState<ViewMode>("4")
+  const [sortBy, setSortBy] = useState<SortBy>("newest")
+
+  const sorted = useMemo(() => sortItems(items, sortBy), [items, sortBy])
+  const allSelected = sorted.length > 0 && selectedIds.length === sorted.length
+  const otherLists = lists.filter((l) => l.id !== listId)
 
   function toggleSelect(id: string) {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     )
+  }
+
+  function handleSelectAll() {
+    setSelectedIds(allSelected ? [] : sorted.map((i) => i.id))
   }
 
   async function handleDelete() {
@@ -65,10 +112,8 @@ export default function ListDetailPage({
     }
   }
 
-  const otherLists = lists.filter((l) => l.id !== listId)
-
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-4xl space-y-6">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
@@ -82,51 +127,87 @@ export default function ListDetailPage({
           <ArrowLeft className="h-3.5 w-3.5" />
           All Lists
         </Link>
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">
-              {list?.name ?? "List"}
-            </h1>
-            {list?.category && (
-              <span className="mt-1.5 inline-block rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                {list.category}
-              </span>
-            )}
-          </div>
-          <button
-            onClick={() => setShowAdd(true)}
-            className="flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
-          >
-            <Plus className="h-4 w-4" />
-            Add Item
-          </button>
-        </div>
+        <h1 className="text-2xl font-bold text-slate-900">{list?.name ?? "List"}</h1>
+        {list?.category && (
+          <span className="mt-1.5 inline-block rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+            {list.category}
+          </span>
+        )}
       </motion.div>
 
-      {/* Bulk action toolbar */}
+      {/* Toolbar: select-all / sort / view toggle */}
+      {!loading && sorted.length > 0 && (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleSelectAll}
+            className="text-xs font-medium text-slate-500 transition-colors hover:text-slate-800"
+          >
+            {allSelected ? "Deselect all" : "Select all"}
+          </button>
+
+          <div className="ml-auto flex items-center gap-2.5">
+            {/* Sort */}
+            <div className="relative flex items-center">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortBy)}
+                className="appearance-none cursor-pointer rounded-lg border border-slate-200 bg-white/70 py-1.5 pl-3 pr-7 text-xs font-medium text-slate-600 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-200"
+              >
+                {SORT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400" />
+            </div>
+
+            {/* View mode toggle */}
+            <div className="flex items-center overflow-hidden rounded-lg border border-slate-200 bg-white/70 shadow-sm">
+              {VIEW_TOGGLE.map(({ mode, Icon, label }, i) => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  aria-label={label}
+                  className={cn(
+                    "flex h-8 w-8 items-center justify-center transition-colors",
+                    i > 0 && "border-l border-slate-200",
+                    viewMode === mode
+                      ? "bg-slate-900 text-white"
+                      : "text-slate-400 hover:bg-slate-50 hover:text-slate-700",
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk action bar */}
       <AnimatePresence>
         {selectedIds.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white/80 px-4 py-3 shadow-sm"
+            className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-sm"
           >
-            <span className="text-sm font-medium text-slate-700">
+            <span className="text-sm font-semibold text-slate-700">
               {selectedIds.length} selected
             </span>
             <button
               onClick={() => setSelectedIds([])}
-              className="text-xs text-slate-400 hover:text-slate-700"
+              className="text-xs text-slate-400 transition-colors hover:text-slate-700"
             >
               Clear
             </button>
+
             <div className="ml-auto flex items-center gap-2">
               <div className="relative">
                 <button
                   onClick={() => setShowMoveMenu((v) => !v)}
                   disabled={bulkLoading || otherLists.length === 0}
-                  className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50"
                 >
                   <MoveRight className="h-3.5 w-3.5" />
                   Move to
@@ -137,7 +218,7 @@ export default function ListDetailPage({
                       initial={{ opacity: 0, y: 4 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 4 }}
-                      className="absolute right-0 top-8 z-20 min-w-[160px] rounded-xl border border-slate-200 bg-white p-1 shadow-lg"
+                      className="absolute right-0 top-full mt-1 z-20 min-w-[160px] rounded-xl border border-slate-200 bg-white p-1 shadow-lg"
                     >
                       {otherLists.map((l) => (
                         <button
@@ -152,10 +233,11 @@ export default function ListDetailPage({
                   )}
                 </AnimatePresence>
               </div>
+
               <button
                 onClick={handleDelete}
                 disabled={bulkLoading}
-                className="flex items-center gap-1.5 rounded-lg bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-lg bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-500 transition-colors hover:bg-red-500/20 disabled:opacity-50"
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 Delete
@@ -167,34 +249,20 @@ export default function ListDetailPage({
 
       {/* Product grid */}
       <ProductGrid
-        items={items}
-        listId={listId}
+        items={sorted}
+        listId={listId ?? ""}
         loading={loading}
+        viewMode={viewMode}
         selectedIds={selectedIds}
         onSelect={toggleSelect}
+        selectionActive={selectedIds.length > 0}
         emptyState={
           <EmptyState
             icon={Package}
             title="This list is empty"
-            description="Add a product URL to start tracking prices in this list."
-            action={
-              <button
-                onClick={() => setShowAdd(true)}
-                className="flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-                Add first item
-              </button>
-            }
+            description="Track a product from the home page to add items here."
           />
         }
-      />
-
-      <AddItemModal
-        open={showAdd}
-        onClose={() => setShowAdd(false)}
-        lists={lists}
-        defaultListId={listId ?? undefined}
       />
     </div>
   )
