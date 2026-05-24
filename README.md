@@ -1,22 +1,42 @@
-# Droppr
+﻿<p align="center">
+  <img src="public/droppr.png" alt="Droppr" width="80" />
+</p>
 
-**Track prices across any online retailer. Get notified the moment they drop.**
+<h1 align="center">Droppr</h1>
 
-Droppr is a production-ready full-stack price drop tracker built with Next.js 16, Firebase, and Puppeteer. Paste any product URL, watch the price get scraped and tracked automatically every 6 hours via GitHub Actions, and receive polished email alerts when your defined threshold is met.
+<p align="center">
+  <strong>The smartest way to track prices across any online store.</strong><br/>
+</p>
+
+<p align="center">
+  A full-stack price drop tracker built with Next.js 16, Firebase, and Puppeteer.<br/>
+  Paste a product URL and Droppr tracks the price every 6 hours via GitHub Actions,<br/>
+  then sends an email alert the moment your threshold is met.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white&style=flat-square" alt="Next.js" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white&style=flat-square" alt="Tailwind CSS" />
+  <img src="https://img.shields.io/badge/Firebase-Firestore_+_Auth-FFCA28?logo=firebase&logoColor=black&style=flat-square" alt="Firebase" />
+  <img src="https://img.shields.io/badge/Puppeteer-40B5A4?logo=puppeteer&logoColor=white&style=flat-square" alt="Puppeteer" />
+</p>
 
 ---
 
 ## Features
 
-- **Universal scraping** � tracks prices from any online retailer using Puppeteer with stealth plugin
-- **Authenticated** � email/password and Google OAuth via Firebase Auth
-- **Organized watchlists** � create categorized lists to group your tracked items
-- **Deals page** � live view of all items currently on sale, sortable and filterable
-- **Price history charts** � sparkline charts showing price trends over time
-- **Smart alerts** � configure alerts by fixed price threshold or percentage drop
-- **Email notifications** � beautiful HTML emails sent via Resend when your alert triggers
-- **Fully automated** � GitHub Actions runs the price checker every 6 hours for free
-- **Real-time updates** � Firestore onSnapshot listeners keep the UI live
+- **Universal price scraping** via Puppeteer with stealth plugin and a 4-stage extraction pipeline
+- **Smart currency detection** supporting DKK, NOK, SEK, EUR, GBP, USD and more
+- **European number parsing** handles formats like `1.299,00 kr` correctly
+- **Liquid glass UI** with aurora animated landing page and macOS-style floating dock
+- **Watchlists** to organise tracked items into categorized lists with live item counts
+- **Deals page** showing all items currently below their recorded high
+- **Price history charts** with sparkline trend visualization
+- **Configurable alerts** by fixed price or percentage drop
+- **Email notifications** via Resend when an alert triggers
+- **Automated checks** every 6 hours via GitHub Actions at no cost
+- **Real-time UI** powered by Firestore `onSnapshot` listeners
+- **Auth** with email/password and Google OAuth via Firebase
 
 ---
 
@@ -27,13 +47,17 @@ Droppr is a production-ready full-stack price drop tracker built with Next.js 16
 | Framework | Next.js 16.2.6 (App Router) |
 | Language | TypeScript (strict) |
 | Styling | Tailwind CSS v4 |
+| UI Primitives | Radix UI (Dialog, Tooltip) |
+| Animations | Framer Motion v12 |
+| Forms | React Hook Form + Zod |
 | Auth | Firebase Auth |
 | Database | Firebase Firestore |
-| Scraping | Puppeteer Core + Stealth plugin |
-| Scheduler | GitHub Actions (free, every 6 hours) |
+| Scraping | Puppeteer Core + puppeteer-extra-stealth |
+| Chromium (prod) | @sparticuz/chromium-min |
+| Scheduler | GitHub Actions |
 | Email | Resend |
 | Charts | Recharts |
-| Animations | Framer Motion |
+| Toasts | Sonner |
 | Deployment | Vercel |
 
 ---
@@ -41,14 +65,14 @@ Droppr is a production-ready full-stack price drop tracker built with Next.js 16
 ## Prerequisites
 
 - Node.js 20+
-- A Firebase project with Auth and Firestore enabled
-- A Resend account (free tier: 3,000 emails/month)
-- A Vercel account for deployment
-- A GitHub repository (used for Actions scheduling)
+- Firebase project with Auth and Firestore enabled
+- Resend account (free tier: 3,000 emails/month)
+- Vercel account
+- GitHub repository (for Actions scheduling)
 
 ---
 
-## Local Development Setup
+## Local Development
 
 ### 1. Clone and install
 
@@ -60,23 +84,41 @@ npm install
 
 ### 2. Configure Firebase
 
-1. Go to Firebase Console and create a new project
-2. Enable Authentication (Email/Password + Google providers)
-3. Enable Firestore Database in production mode
+1. Create a new project in the [Firebase Console](https://console.firebase.google.com)
+2. Enable **Authentication** with Email/Password and Google providers
+3. Enable **Firestore Database** in production mode
 4. Copy your web app config from Project Settings
 
 ### 3. Set Firestore Security Rules
+
+Go to **Firestore Database > Rules** and paste:
 
 ```
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // User profile document
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // All subcollections under a user (lists, items, etc.)
     match /users/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+
+    // collectionGroup queries on "items" (for dashboard/deals views)
+    match /{path=**}/items/{itemId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow write: if request.auth != null && request.resource.data.userId == request.auth.uid;
+    }
+
   }
 }
 ```
+
+> The `collectionGroup` rule is required for the dashboard and deals pages, which query across all lists using `collectionGroup("items")`.
 
 ### 4. Configure environment variables
 
@@ -84,7 +126,17 @@ service cloud.firestore {
 cp .env.local.example .env.local
 ```
 
-Fill in .env.local with your Firebase config, Resend API key, and generated secrets.
+| Variable | Description |
+|---|---|
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Firebase web API key |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Firebase auth domain |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Firebase project ID |
+| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Firebase storage bucket |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Firebase messaging sender ID |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | Firebase app ID |
+| `RESEND_API_KEY` | Resend API key |
+| `SCRAPER_SECRET` | Protects the `/api/scrape` route |
+| `CRON_SECRET` | Protects the `/api/cron/check-prices` route |
 
 ### 5. Run the dev server
 
@@ -94,63 +146,46 @@ npm run dev
 
 ---
 
-## Environment Variables
-
-| Variable | Description |
-|---|---|
-| NEXT_PUBLIC_FIREBASE_API_KEY | Firebase web API key |
-| NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN | Firebase auth domain |
-| NEXT_PUBLIC_FIREBASE_PROJECT_ID | Firebase project ID |
-| NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET | Firebase storage bucket |
-| NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID | Firebase messaging sender ID |
-| NEXT_PUBLIC_FIREBASE_APP_ID | Firebase app ID |
-| RESEND_API_KEY | Resend API key |
-| SCRAPER_SECRET | Protects /api/scrape route |
-| CRON_SECRET | Protects /api/cron/check-prices route |
-
----
-
-## GitHub Actions Setup
-
-In your GitHub repository Settings > Secrets add:
-- APP_URL: your Vercel production URL
-- CRON_SECRET: same value as CRON_SECRET in Vercel env vars
-
-The workflow at .github/workflows/check-prices.yml runs every 6 hours automatically.
-
----
-
-## Vercel Deployment
+## Deployment
 
 1. Push to GitHub
-2. Import in Vercel
-3. Add all environment variables
+2. Import the repo in [Vercel](https://vercel.com)
+3. Add all environment variables under Project Settings
 4. Deploy
 
 ---
 
-## Scraper Notes
+## GitHub Actions
 
-The scraper uses a prioritized extraction pipeline:
+The workflow at `.github/workflows/check-prices.yml` calls `/api/cron/check-prices` every 6 hours.
 
-1. **CSS selectors** — `data-testid`, `itemprop="price"`, `data-price`, common class names
-2. **JSON-LD** — Schema.org `Product`/`Offer` structured data
-3. **DOM text scan** — walks leaf elements looking for price-pattern text (catches SPAs with generated class names)
-4. **Open Graph product meta** — `product:price:amount` / `product:price:currency` (Shopify, Magento, BigCommerce)
+Add these secrets under **Settings > Secrets and variables > Actions**:
 
-To add support for a new site, add selectors to `PRICE_SELECTORS` in `lib/scraper.ts`.
+| Secret | Value |
+|---|---|
+| `APP_URL` | Your Vercel production URL |
+| `CRON_SECRET` | Same value as `CRON_SECRET` in Vercel |
 
-### Site blocking
+---
 
-Some retailers use enterprise bot-protection services (Akamai Bot Manager, Cloudflare Bot Management, etc.) that block automated browsers regardless of stealth techniques. When a site blocks the scraper you will see:
+## Scraper
+
+Prices are extracted using a 4-stage pipeline:
+
+1. CSS selectors (`data-testid`, `itemprop="price"`, `data-price`, common class names)
+2. JSON-LD structured data (Schema.org `Product` / `Offer`)
+3. DOM text scan across leaf elements (catches SPAs with generated class names)
+4. Open Graph product meta (`product:price:amount`, `product:price:currency`)
+
+To add support for a new site, add its selector to `PRICE_SELECTORS` in `lib/scraper.ts`.
+
+### Site Blocking
+
+Some retailers (e.g. H&M via Akamai Bot Manager) block automated browsers entirely. When this happens you will see:
 
 > **"This site is blocking automated access. Try a different retailer or paste the price manually."**
 
-Known blocked retailers include **H&M** (Akamai). There is no reliable workaround without residential proxies, which are outside the scope of this project.
-
-Other known limitations:
-- Sites requiring login are not supported
-- JavaScript-heavy SPAs may occasionally need longer load times (the scraper waits up to 15 s for price selectors or network idle)
+There is no workaround without residential proxies. Sites requiring login are also not supported.
 
 ---
 
