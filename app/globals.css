@@ -61,6 +61,60 @@ a {
   100% { background-position:  200% center; }
 }
 
+/* ─── Glass Effect layers ───────────────────────────────────────────── */
+.glass-outer-shadow {
+  box-shadow: 0 6px 24px rgba(0,0,0,0.09), 0 2px 6px rgba(0,0,0,0.05);
+  transition-timing-function: cubic-bezier(0.175, 0.885, 0.32, 2.2);
+}
+
+.glass-backdrop {
+  backdrop-filter: blur(14px) saturate(200%);
+  -webkit-backdrop-filter: blur(14px) saturate(200%);
+  filter: url(#glass-distortion);
+  isolation: isolate;
+  border-radius: inherit;
+}
+
+.glass-shine {
+  box-shadow: inset 2px 2px 1px 0 rgba(255,255,255,0.75),
+              inset -1px -1px 1px 1px rgba(255,255,255,0.4);
+  border: 1px solid rgba(255,255,255,0.82);
+  border-radius: inherit;
+}
+
+.glass-panel-danger {
+  background: rgba(255,240,240,0.55);
+}
+
+/* ─── Dock layers ───────────────────────────────────────────────────── */
+.dock-outer {
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
+  border-radius: 24px;
+}
+
+.dock-backdrop {
+  backdrop-filter: blur(20px) saturate(220%);
+  -webkit-backdrop-filter: blur(20px) saturate(220%);
+  filter: url(#glass-distortion);
+  isolation: isolate;
+  border-radius: inherit;
+}
+
+.dock-shine {
+  box-shadow: inset 2px 2px 1px 0 rgba(255,255,255,0.85),
+              inset -1px -1px 1px 1px rgba(255,255,255,0.45);
+  border: 1px solid rgba(255,255,255,0.85);
+  border-radius: inherit;
+}
+
+/* ─── Auth background ───────────────────────────────────────────────── */
+.auth-bg {
+  background:
+    radial-gradient(ellipse at 30% 40%, rgba(99,102,241,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse at 75% 65%, rgba(168,85,247,0.08) 0%, transparent 55%),
+    #f8fafc;
+}
+
 /* Smooth scrollbar */
 * {
   scrollbar-width: thin;

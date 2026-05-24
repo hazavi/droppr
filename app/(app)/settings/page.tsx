@@ -262,7 +262,7 @@ export default function SettingsPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.15 }}
       >
-      <GlassPanel className="border border-red-200/60 p-6" style={{ background: "rgba(255,240,240,0.55)" }}>
+      <GlassPanel className="glass-panel-danger border border-red-200/60 p-6">
         <div className="mb-5 flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50">
             <AlertTriangle className="h-4 w-4 text-red-500" />

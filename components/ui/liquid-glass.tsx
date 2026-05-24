@@ -14,7 +14,7 @@ interface GlassEffectProps {
 // ─── SVG Filter (render once at root) ────────────────────────────────────────
 
 export const GlassFilter: React.FC = () => (
-  <svg style={{ display: "none" }} aria-hidden="true">
+  <svg className="hidden" aria-hidden="true">
     <defs>
       <filter
         id="glass-distortion"
@@ -78,44 +78,16 @@ export const GlassEffect: React.FC<GlassEffectProps> = ({
   onClick,
 }) => (
   <div
-    className={`relative transition-all duration-500 ${className}`}
-    style={{
-      boxShadow:
-        "0 6px 24px rgba(0,0,0,0.09), 0 2px 6px rgba(0,0,0,0.05)",
-      transitionTimingFunction: "cubic-bezier(0.175, 0.885, 0.32, 2.2)",
-      ...style,
-    }}
+    className={`relative transition-all duration-500 glass-outer-shadow ${className}`}
+    style={style}
     onClick={onClick}
   >
     {/* Layer 1 – blur + glass distortion */}
-    <div
-      className="absolute inset-0 z-0 overflow-hidden"
-      style={{
-        backdropFilter: "blur(14px) saturate(200%)",
-        WebkitBackdropFilter: "blur(14px) saturate(200%)",
-        filter: "url(#glass-distortion)",
-        isolation: "isolate",
-        borderRadius: "inherit",
-      }}
-    />
+    <div className="absolute inset-0 z-0 overflow-hidden glass-backdrop" />
     {/* Layer 2 – frosted white tint */}
-    <div
-      className="absolute inset-0 z-10"
-      style={{
-        background: "rgba(255, 255, 255, 0.55)",
-        borderRadius: "inherit",
-      }}
-    />
+    <div className="absolute inset-0 z-10 bg-white/55 rounded-[inherit]" />
     {/* Layer 3 – highlight edge shine */}
-    <div
-      className="absolute inset-0 z-20"
-      style={{
-        boxShadow:
-          "inset 2px 2px 1px 0 rgba(255,255,255,0.75), inset -1px -1px 1px 1px rgba(255,255,255,0.4)",
-        border: "1px solid rgba(255,255,255,0.82)",
-        borderRadius: "inherit",
-      }}
-    />
+    <div className="absolute inset-0 z-20 glass-shine" />
     {/* Content */}
     <div className="relative z-30">{children}</div>
   </div>
