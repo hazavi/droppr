@@ -77,7 +77,7 @@
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/your-username/droppr.git
+git clone https://github.com/hazavi/droppr.git
 cd droppr
 npm install
 ```
