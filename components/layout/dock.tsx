@@ -26,37 +26,12 @@ export function Dock() {
   return (
     <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2">
       {/* Dock outer — allows tooltip overflow; glass layers clipped inside */}
-      <div
-        className="relative flex items-end gap-0.5 px-3 py-2.5"
-        style={{
-          boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)",
-          borderRadius: "24px",
-        }}
-      >
+      <div className="relative flex items-end gap-0.5 px-3 py-2.5 dock-outer">
         {/* ── Glass Layers ──────────────────────────────────────── */}
-        <div className="absolute inset-0 overflow-hidden" style={{ borderRadius: "24px", zIndex: 0 }}>
-          <div
-            className="absolute inset-0"
-            style={{
-              backdropFilter: "blur(20px) saturate(220%)",
-              WebkitBackdropFilter: "blur(20px) saturate(220%)",
-              filter: "url(#glass-distortion)",
-              isolation: "isolate",
-              borderRadius: "inherit",
-            }}
-          />
-          <div
-            className="absolute inset-0"
-            style={{ background: "rgba(255,255,255,0.60)", borderRadius: "inherit" }}
-          />
-          <div
-            className="absolute inset-0"
-            style={{
-              boxShadow: "inset 2px 2px 1px 0 rgba(255,255,255,0.85), inset -1px -1px 1px 1px rgba(255,255,255,0.45)",
-              border: "1px solid rgba(255,255,255,0.85)",
-              borderRadius: "inherit",
-            }}
-          />
+        <div className="absolute inset-0 overflow-hidden rounded-[24px] z-0">
+          <div className="absolute inset-0 dock-backdrop" />
+          <div className="absolute inset-0 bg-white/60 rounded-[inherit]" />
+          <div className="absolute inset-0 dock-shine" />
         </div>
         {/* ── Nav Items ─────────────────────────────────────────── */}
         {navItems.map((item) => {
