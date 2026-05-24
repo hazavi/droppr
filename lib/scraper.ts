@@ -1,13 +1,20 @@
 import type { ScrapeResult, ScrapeError } from "@/types"
 
 const PRICE_SELECTORS = [
+  // Explicit test IDs (most reliable)
   "[data-testid*='price']",
-  "[class*='price']",
+  "[data-testid*='Price']",
+  // Class-based — case-insensitive flag covers camelCase React components (ProductPrice etc.)
+  "[class*='price' i]",
+  // Microdata
+  "[itemprop='price']",
+  // Data attributes
+  "[data-price]",
+  "[data-product-price]",
+  // Common class names
   ".pdp-price",
   ".product-price",
   ".sales-price",
-  "[itemprop='price']",
-  "[data-price]",
   ".price",
 ]
 
@@ -87,11 +94,11 @@ function detectCurrency(text: string, siteUrl = ""): string {
     if (/\.no(\/|$|\?|#)/.test(siteUrl)) return "NOK"
     if (/\.is(\/|$|\?|#)/.test(siteUrl)) return "ISK"
     if (/\.se(\/|$|\?|#)/.test(siteUrl)) return "SEK"
-    // Path-based locale segments (e.g. /dk/, /no/, /da-dk/, /nb-no/, /en-dk/)
-    if (/\/(?:dk|da|da-dk|en-dk)(\/|$|\?|#)/i.test(siteUrl)) return "DKK"
-    if (/\/(?:no|nb|nb-no|en-no)(\/|$|\?|#)/i.test(siteUrl)) return "NOK"
-    if (/\/(?:is|en-is)(\/|$|\?|#)/i.test(siteUrl)) return "ISK"
-    if (/\/(?:se|sv|sv-se|en-se)(\/|$|\?|#)/i.test(siteUrl)) return "SEK"
+    // Path-based locale segments — allow - or _ as separator (e.g. /da-dk/, /da_dk/, /nb-no/)
+    if (/\/(?:dk|da|da[_-]dk|en[_-]dk)(\/|$|\?|#)/i.test(siteUrl)) return "DKK"
+    if (/\/(?:no|nb|nb[_-]no|en[_-]no)(\/|$|\?|#)/i.test(siteUrl)) return "NOK"
+    if (/\/(?:is|en[_-]is)(\/|$|\?|#)/i.test(siteUrl)) return "ISK"
+    if (/\/(?:se|sv|sv[_-]se|en[_-]se)(\/|$|\?|#)/i.test(siteUrl)) return "SEK"
     return "SEK"
   }
 
@@ -156,6 +163,9 @@ export async function scrapeProduct(
         "--no-first-run",
         "--no-zygote",
         "--disable-gpu",
+        "--window-size=1920,1080",
+        "--disable-blink-features=AutomationControlled",
+        "--lang=en-US,en",
       ],
     }
 
@@ -166,14 +176,40 @@ export async function scrapeProduct(
     browser = await puppeteer.launch(launchOptions)
     const page = await browser!.newPage()
 
+    await page.setViewport({ width: 1920, height: 1080 })
     await page.setUserAgent(
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     )
+    await page.setExtraHTTPHeaders({
+      "Accept-Language": "en-US,en;q=0.9",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    })
 
-    await page.goto(url, {
-      waitUntil: "load",
+    const response = await page.goto(url, {
+      waitUntil: "domcontentloaded",
       timeout: 30000,
     })
+
+    // Detect hard blocks before doing any DOM work
+    const httpStatus = response?.status() ?? 200
+    if (httpStatus === 403 || httpStatus === 429) {
+      return {
+        error: true,
+        reason: "blocked",
+        message: "This site is blocking automated access. Try a different retailer or paste the price manually.",
+      }
+    }
+
+    // For SPAs (React/Next.js etc.) wait for price content using two parallel strategies:
+    // 1. price selector appears in DOM, OR 2. network goes idle (JS finished rendering)
+    await Promise.race([
+      page
+        .waitForSelector(PRICE_SELECTORS.join(", "), { timeout: 15000 })
+        .catch(() => {}),
+      page
+        .waitForNetworkIdle({ idleTime: 1000, timeout: 15000 })
+        .catch(() => {}),
+    ])
 
     const result = await page.evaluate((selectors: string[]) => {
       let rawPrice: string | null = null
@@ -219,28 +255,69 @@ export async function scrapeProduct(
         }
       }
 
-      // 3. Open Graph fallbacks
+      // 3. Last-resort: text scan — walk TRUE leaf elements only.
+      //    Two passes: first look for price+currency together, then accept pure price patterns.
+      if (!rawPrice) {
+        const priceWithCurrRe = /(?:[$€£¥₩₹]|kr\.?|DKK|NOK|SEK|USD|EUR|GBP)\s*[\d.,]+|[\d.,]+\s*(?:[$€£¥₩₹]|kr\.?|DKK|NOK|SEK|USD|EUR|GBP)/i
+        // Matches "299,00" or "1.299" or "299.00" but not plain integers like "42" (size numbers)
+        const purePriceRe = /^\d{1,6}[.,]\d{2}$|^\d{1,3}\.\d{3}$/
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT)
+        let node = walker.nextNode() as Element | null
+        let pureCandidate: string | null = null
+        while (node) {
+          if ((node as Element).children.length === 0) {
+            const text = ((node as Element).textContent ?? "").trim()
+            if (text.length > 0 && text.length < 40) {
+              if (priceWithCurrRe.test(text)) { rawPrice = text; break }
+              if (!pureCandidate && purePriceRe.test(text)) pureCandidate = text
+            }
+          }
+          node = walker.nextNode() as Element | null
+        }
+        if (!rawPrice) rawPrice = pureCandidate
+      }
+
+      // 4. Open Graph fallbacks + product meta tags
+      const pageTitle = document.title ?? ""
       const ogTitle =
         document.querySelector('meta[property="og:title"]')?.getAttribute("content") ??
         document.querySelector('meta[name="og:title"]')?.getAttribute("content") ??
-        document.title ??
-        ""
+        pageTitle
 
       const ogImage =
         document.querySelector('meta[property="og:image"]')?.getAttribute("content") ??
         document.querySelector('meta[name="og:image"]')?.getAttribute("content") ??
         ""
 
-      return { rawPrice, currency, ogTitle, ogImage }
+      // Facebook/Open Graph product meta — many Shopify/BigCommerce/Magento sites use these
+      if (!rawPrice) {
+        rawPrice = document.querySelector('meta[property="product:price:amount"]')?.getAttribute("content") ?? null
+      }
+      if (!currency) {
+        currency = document.querySelector('meta[property="product:price:currency"]')?.getAttribute("content") ?? null
+      }
+
+      // Detect block pages that serve 200 OK (e.g. Akamai, Cloudflare JS challenge)
+      const isBlocked = /access denied|security check|checking your browser|just a moment|ddos-guard/i.test(pageTitle)
+
+      return { rawPrice, currency, ogTitle, ogImage, isBlocked }
     }, PRICE_SELECTORS)
 
     const siteName = new URL(url).hostname.replace(/^www\./, "")
+
+    if (result.isBlocked) {
+      return {
+        error: true,
+        reason: "blocked",
+        message: "This site is blocking automated access. Try a different retailer or paste the price manually.",
+      }
+    }
 
     if (!result.rawPrice) {
       return {
         error: true,
         reason: "parse_failed",
-        message: "Could not find a price on this page. The site may use dynamic rendering or is unsupported.",
+        message: "Could not find a price on this page. The site may use dynamic rendering or block scrapers.",
       }
     }
 

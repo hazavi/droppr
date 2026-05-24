@@ -8,15 +8,15 @@ Droppr is a production-ready full-stack price drop tracker built with Next.js 16
 
 ## Features
 
-- **Universal scraping** — tracks prices from any online retailer using Puppeteer with stealth plugin
-- **Authenticated** — email/password and Google OAuth via Firebase Auth
-- **Organized watchlists** — create categorized lists to group your tracked items
-- **Deals page** — live view of all items currently on sale, sortable and filterable
-- **Price history charts** — sparkline charts showing price trends over time
-- **Smart alerts** — configure alerts by fixed price threshold or percentage drop
-- **Email notifications** — beautiful HTML emails sent via Resend when your alert triggers
-- **Fully automated** — GitHub Actions runs the price checker every 6 hours for free
-- **Real-time updates** — Firestore onSnapshot listeners keep the UI live
+- **Universal scraping** ï¿½ tracks prices from any online retailer using Puppeteer with stealth plugin
+- **Authenticated** ï¿½ email/password and Google OAuth via Firebase Auth
+- **Organized watchlists** ï¿½ create categorized lists to group your tracked items
+- **Deals page** ï¿½ live view of all items currently on sale, sortable and filterable
+- **Price history charts** ï¿½ sparkline charts showing price trends over time
+- **Smart alerts** ï¿½ configure alerts by fixed price threshold or percentage drop
+- **Email notifications** ï¿½ beautiful HTML emails sent via Resend when your alert triggers
+- **Fully automated** ï¿½ GitHub Actions runs the price checker every 6 hours for free
+- **Real-time updates** ï¿½ Firestore onSnapshot listeners keep the UI live
 
 ---
 
@@ -131,12 +131,26 @@ The workflow at .github/workflows/check-prices.yml runs every 6 hours automatica
 
 ## Scraper Notes
 
-The scraper uses a prioritized selector list. To add support for a new site, add selectors to PRICE_SELECTORS in lib/scraper.ts.
+The scraper uses a prioritized extraction pipeline:
 
-Known limitations:
-- Sites with aggressive bot detection may block scrapes
-- JavaScript-heavy SPAs may require longer timeouts
+1. **CSS selectors** â€” `data-testid`, `itemprop="price"`, `data-price`, common class names
+2. **JSON-LD** â€” Schema.org `Product`/`Offer` structured data
+3. **DOM text scan** â€” walks leaf elements looking for price-pattern text (catches SPAs with generated class names)
+4. **Open Graph product meta** â€” `product:price:amount` / `product:price:currency` (Shopify, Magento, BigCommerce)
+
+To add support for a new site, add selectors to `PRICE_SELECTORS` in `lib/scraper.ts`.
+
+### Site blocking
+
+Some retailers use enterprise bot-protection services (Akamai Bot Manager, Cloudflare Bot Management, etc.) that block automated browsers regardless of stealth techniques. When a site blocks the scraper you will see:
+
+> **"This site is blocking automated access. Try a different retailer or paste the price manually."**
+
+Known blocked retailers include **H&M** (Akamai). There is no reliable workaround without residential proxies, which are outside the scope of this project.
+
+Other known limitations:
 - Sites requiring login are not supported
+- JavaScript-heavy SPAs may occasionally need longer load times (the scraper waits up to 15 s for price selectors or network idle)
 
 ---
 
