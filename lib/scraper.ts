@@ -314,7 +314,10 @@ export async function scrapeProduct(
           const elText = (el.textContent || "").trim()
 
           // Savings / badge classes on the element itself
-          if (/\bspar\b|saving|save[_-]?amount|rabat|badge|sticker|campaign|promo[_-]?tag|price[_-]?badge|offer[_-]?badge/.test(elCls + " " + elId)) {
+          // NOTE: "campaign" alone is NOT excluded — sites like proshop.dk use
+          // "site-currency-campaign" as their SALE price class. Only exclude when
+          // combined with badge/sticker/label/saving indicators.
+          if (/\bspar\b|saving|save[_-]?amount|rabat|price[_-]?badge|offer[_-]?badge|campaign[_-]?(badge|sticker|tag|label|saving)|badge[_-]?(price|campaign)|sticker[_-]?(price|saving)|promo[_-]?tag/.test(elCls + " " + elId)) {
             return true
           }
           // Text starting with savings words (multi-language):
@@ -413,23 +416,52 @@ export async function scrapeProduct(
         jsonLdImage ??
         null
 
-      // If no meta image, fall back to the largest visible <img> on the page
+      // If no meta image, fall back to the largest visible <img> on the page.
+      // Also checks data-src / data-lazy-src for lazy-loaded images (React SPAs often
+      // set the real URL there before the IntersectionObserver swaps it into src).
       let ogImage = rawOgImage ?? ""
       if (!ogImage) {
         let bestImg = ""
         let bestArea = 0
-        document.querySelectorAll("img[src]").forEach((el) => {
+        document.querySelectorAll("img").forEach((el) => {
           const img = el as HTMLImageElement
-          const src = img.getAttribute("src") ?? ""
-          if (!src || src.startsWith("data:") || src.includes("logo") || src.includes("icon")) return
-          const area = img.naturalWidth * img.naturalHeight || img.width * img.height
+          const src =
+            img.getAttribute("src") ||
+            img.getAttribute("data-src") ||
+            img.getAttribute("data-lazy-src") ||
+            img.getAttribute("data-original") ||
+            img.getAttribute("data-image") ||
+            ""
+          if (!src || src.startsWith("data:") || src.includes("logo") || src.includes("icon") || src.includes("pixel") || src.includes("placeholder")) return
+          // Prefer images whose naturalWidth is known; fall back to attribute dimensions
+          const w = img.naturalWidth  || img.width  || parseInt(img.getAttribute("width")  ?? "0") || 0
+          const h = img.naturalHeight || img.height || parseInt(img.getAttribute("height") ?? "0") || 0
+          const area = w * h
           if (area > bestArea) { bestArea = area; bestImg = src }
         })
+        // If area-based pick failed (all images had 0 dimensions, e.g. pure lazy-load),
+        // fall back to the first non-trivial <img> src or data-src on the page.
+        if (!bestImg) {
+          for (const el of Array.from(document.querySelectorAll("img"))) {
+            const img = el as HTMLImageElement
+            const src =
+              img.getAttribute("src") ||
+              img.getAttribute("data-src") ||
+              img.getAttribute("data-lazy-src") ||
+              img.getAttribute("data-original") ||
+              ""
+            if (src && !src.startsWith("data:") && !src.includes("logo") && !src.includes("icon") && !src.includes("pixel") && !src.includes("placeholder")) {
+              bestImg = src
+              break
+            }
+          }
+        }
         ogImage = bestImg
       }
 
-      // Resolve protocol-relative URLs (//example.com/img.jpg)
+      // Resolve protocol-relative and root-relative URLs
       if (ogImage.startsWith("//")) ogImage = "https:" + ogImage
+      else if (ogImage.startsWith("/")) ogImage = window.location.origin + ogImage
 
       // Facebook/Open Graph product meta — many Shopify/BigCommerce/Magento sites use these
       if (!rawPrice) {
@@ -470,7 +502,7 @@ export async function scrapeProduct(
         if (rawComparePrice) break
       }
       if (!rawComparePrice) {
-        const beforePriceRe = /(?:f[øo]r(?:pris)?|was|before|avant|prima\s+era|tilbudspris|ursprungspris|normalpris|vejledende\s+pris)[:\s]+[\d][\d\s.,]*/i
+        const beforePriceRe = /(?:normalpris|vejledende|listepris|normpris|f[øo]r(?:pris)?|was\s+price|was:|before:|regular\s+price|avant|prima\s+era|tilbudspris|ursprungspris|vejl\.?\s*pris)[:\s]+[\d][\d\s.,]*/i
         const walker2 = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT)
         let node2 = walker2.nextNode() as Element | null
         while (node2) {
