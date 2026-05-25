@@ -111,6 +111,40 @@ function detectCurrency(text: string, siteUrl = ""): string {
     return "SEK"
   }
 
+  // No symbol found in price text — fall back to URL TLD for country-specific stores
+  if (/\.dk(\/|$|\?|#)/.test(siteUrl)) return "DKK"
+  if (/\.no(\/|$|\?|#)/.test(siteUrl)) return "NOK"
+  if (/\.se(\/|$|\?|#)/.test(siteUrl)) return "SEK"
+  if (/\.is(\/|$|\?|#)/.test(siteUrl)) return "ISK"
+  if (/\.de(\/|$|\?|#)/.test(siteUrl)) return "EUR"
+  if (/\.fr(\/|$|\?|#)/.test(siteUrl)) return "EUR"
+  if (/\.nl(\/|$|\?|#)/.test(siteUrl)) return "EUR"
+  if (/\.it(\/|$|\?|#)/.test(siteUrl)) return "EUR"
+  if (/\.es(\/|$|\?|#)/.test(siteUrl)) return "EUR"
+  if (/\.at(\/|$|\?|#)/.test(siteUrl)) return "EUR"
+  if (/\.be(\/|$|\?|#)/.test(siteUrl)) return "EUR"
+  if (/\.fi(\/|$|\?|#)/.test(siteUrl)) return "EUR"
+  if (/\.pt(\/|$|\?|#)/.test(siteUrl)) return "EUR"
+  if (/\.co\.uk(\/|$|\?|#)/.test(siteUrl)) return "GBP"
+  if (/\.uk(\/|$|\?|#)/.test(siteUrl)) return "GBP"
+  if (/\.jp(\/|$|\?|#)/.test(siteUrl)) return "JPY"
+  if (/\.au(\/|$|\?|#)/.test(siteUrl)) return "AUD"
+  if (/\.ca(\/|$|\?|#)/.test(siteUrl)) return "CAD"
+  if (/\.nz(\/|$|\?|#)/.test(siteUrl)) return "NZD"
+  if (/\.cn(\/|$|\?|#)/.test(siteUrl)) return "CNY"
+  if (/\.kr(\/|$|\?|#)/.test(siteUrl)) return "KRW"
+  if (/\.in(\/|$|\?|#)/.test(siteUrl)) return "INR"
+  if (/\.br(\/|$|\?|#)/.test(siteUrl)) return "BRL"
+  if (/\.mx(\/|$|\?|#)/.test(siteUrl)) return "MXN"
+  if (/\.za(\/|$|\?|#)/.test(siteUrl)) return "ZAR"
+  if (/\.pl(\/|$|\?|#)/.test(siteUrl)) return "PLN"
+  if (/\.cz(\/|$|\?|#)/.test(siteUrl)) return "CZK"
+  if (/\.hu(\/|$|\?|#)/.test(siteUrl)) return "HUF"
+  if (/\.ro(\/|$|\?|#)/.test(siteUrl)) return "RON"
+  if (/\.ch(\/|$|\?|#)/.test(siteUrl)) return "CHF"
+  if (/\.sg(\/|$|\?|#)/.test(siteUrl)) return "SGD"
+  if (/\.hk(\/|$|\?|#)/.test(siteUrl)) return "HKD"
+
   return "USD"
 }
 
@@ -224,26 +258,90 @@ export async function scrapeProduct(
       let rawPrice: string | null = null
       let currency: string | null = null
 
-      // 1. Try CSS selectors — collect ALL matching elements across all selectors,
-      //    then pick the minimum numeric price (handles sale pages where both the
-      //    original struck-through price and the discounted price match the selector).
-      const priceCandidates: string[] = []
-      for (const selector of selectors) {
-        for (const el of Array.from(document.querySelectorAll(selector))) {
-          const content = (el as Element).getAttribute("content")?.trim()
-          const dataPrice = (el as Element).getAttribute("data-price")?.trim()
-          const text = (el as Element).textContent?.trim()
-          const val = content ?? dataPrice ?? text ?? ""
-          if (val) priceCandidates.push(val)
+      // 1. JSON-LD first — structured data is the most reliable source for the
+      //    main product price. Running this before CSS prevents accessories or
+      //    cross-sell items (which also match generic price selectors) from winning.
+      let jsonLdImage: string | null = null
+      const jsonLdScripts = Array.from(
+        document.querySelectorAll('script[type="application/ld+json"]')
+      )
+      outerLd: for (const script of jsonLdScripts) {
+        if (!script.textContent) continue
+        try {
+          const parsed = JSON.parse(script.textContent) as unknown
+          const schemas: Record<string, unknown>[] = Array.isArray(parsed)
+            ? (parsed as Record<string, unknown>[])
+            : [parsed as Record<string, unknown>]
+          for (const schema of schemas) {
+            // offers may be an object OR an array (both are valid JSON-LD)
+            const offersRaw = (schema as Record<string, unknown>).offers
+            const offersList: Record<string, unknown>[] = Array.isArray(offersRaw)
+              ? (offersRaw as Record<string, unknown>[])
+              : offersRaw
+              ? [offersRaw as Record<string, unknown>]
+              : [schema as Record<string, unknown>]
+            for (const offer of offersList) {
+              if (!rawPrice && offer?.price) rawPrice = String(offer.price)
+              if (!currency && offer?.priceCurrency) currency = String(offer.priceCurrency)
+              if (rawPrice && currency) break outerLd
+            }
+            if (!jsonLdImage && (schema as Record<string, unknown>).image) {
+              const img = (schema as Record<string, unknown>).image
+              if (typeof img === "string") jsonLdImage = img
+              else if (Array.isArray(img) && typeof img[0] === "string") jsonLdImage = img[0]
+              else if (typeof img === "object" && (img as Record<string, unknown>).url) {
+                jsonLdImage = String((img as Record<string, unknown>).url)
+              }
+            }
+          }
+        } catch {
+          // ignore malformed JSON-LD
         }
       }
-      if (priceCandidates.length > 0) {
-        // Inline numeric parser — prioritises numbers with exactly 2 decimal places
-        // (real prices like 179,00) over bare integers that may be percentages like 61.
+
+      // 2. CSS selectors — fallback when JSON-LD has no price.
+      //    Iterates selectors in priority order and stops at the FIRST selector
+      //    that yields matches ("first-selector-wins"), so high-specificity sale-price
+      //    selectors win over the generic [class*='price'] catch-all.
+      //    Elements inside cross-sell / accessory sections are excluded.
+      if (!rawPrice) {
+        // Returns true if this element should be excluded from price detection.
+        // Checks the element itself (class, id, text) AND its ancestors.
+        const isExcluded = (el: Element): boolean => {
+          // --- Element-level checks ---
+          const elCls  = (el.className  || "").toLowerCase()
+          const elId   = (el.id         || "").toLowerCase()
+          const elText = (el.textContent || "").trim()
+
+          // Savings / badge classes on the element itself
+          // NOTE: "campaign" alone is NOT excluded — sites like proshop.dk use
+          // "site-currency-campaign" as their SALE price class. Only exclude when
+          // combined with badge/sticker/label/saving indicators.
+          if (/\bspar\b|saving|save[_-]?amount|rabat|price[_-]?badge|offer[_-]?badge|campaign[_-]?(badge|sticker|tag|label|saving)|badge[_-]?(price|campaign)|sticker[_-]?(price|saving)|promo[_-]?tag/.test(elCls + " " + elId)) {
+            return true
+          }
+          // Text starting with savings words (multi-language):
+          // "SPAR 3.500,-"  "SAVE $50"  "Rabat 200 kr"  "Spara 300 kr"  "Save up to"
+          if (/^\s*(spar\b|spare\b|save\b|savings\b|you\s+save|rabat\b|spara\b|économis|ahorra|risparmia)/i.test(elText)) {
+            return true
+          }
+
+          // --- Ancestor checks ---
+          let node = el.parentElement
+          while (node && node !== document.body) {
+            const cls = (node.className || "").toLowerCase()
+            const id  = (node.id        || "").toLowerCase()
+            if (/cross[_-]?sell|upsell|related|recommended|bundle|accessori|similar|also[_-]?like|trade[_-]?in|add[_-]?on|saving|spar/.test(cls + " " + id)) {
+              return true
+            }
+            node = node.parentElement
+          }
+          return false
+        }
+
         const parseNum = (s: string): number => {
-          const text = s.replace(/\u00a0/g, " ")
-          // First: look for a number with exactly 2 decimal digits — almost certainly a price
-          const m = text.match(/\d[\d\s.,]*[.,]\d{2}(?!\d)/)
+          const t = s.replace(/\u00a0/g, " ")
+          const m = t.match(/\d[\d\s.,]*[.,]\d{2}(?!\d)/)
           if (m) {
             let n = m[0].replace(/\s/g, "").replace(/[.,]+$/, "")
             const lc = n.lastIndexOf(","), ld = n.lastIndexOf(".")
@@ -254,51 +352,29 @@ export async function scrapeProduct(
             }
             return parseFloat(n) || Infinity
           }
-          // Fallback: any plain integer (handles currencies like JPY that have no cents)
-          const fm = text.match(/\d+/)
+          const fm = t.match(/\d+/)
           return fm ? parseFloat(fm[0]) : Infinity
         }
-        // Drop pure percentage strings like "-61%" before comparing — they are not prices
-        const filtered = priceCandidates.filter(c => !/^\s*-?\d{1,3}\s*%\s*$/.test(c))
-        const pool = filtered.length > 0 ? filtered : priceCandidates
-        // Choose the candidate with the lowest numeric value — that is the sale/final price
-        rawPrice = pool.reduce((best, c) =>
-          parseNum(c) < parseNum(best) ? c : best
-        )
-      }
 
-      // 2. Always scan ALL JSON-LD blocks — use for currency regardless of whether
-      //    CSS already found a price, and use for rawPrice/image as fallback if CSS missed it.
-      let jsonLdImage: string | null = null
-      const jsonLdScripts = Array.from(
-        document.querySelectorAll('script[type="application/ld+json"]')
-      )
-      outer: for (const script of jsonLdScripts) {
-        if (!script.textContent) continue
-        try {
-          const parsed = JSON.parse(script.textContent) as unknown
-          const schemas: Record<string, unknown>[] = Array.isArray(parsed)
-            ? (parsed as Record<string, unknown>[])
-            : [parsed as Record<string, unknown>]
-          for (const schema of schemas) {
-            const offers =
-              (schema.offers as Record<string, unknown>) ??
-              (schema as Record<string, unknown>)
-            if (!rawPrice && offers?.price) rawPrice = String(offers.price)
-            if (!currency && offers?.priceCurrency) currency = String(offers.priceCurrency)
-            // Extract image from schema (may be string or array)
-            if (!jsonLdImage && schema.image) {
-              const img = schema.image
-              if (typeof img === "string") jsonLdImage = img
-              else if (Array.isArray(img) && typeof img[0] === "string") jsonLdImage = img[0]
-              else if (typeof img === "object" && (img as Record<string, unknown>).url) {
-                jsonLdImage = String((img as Record<string, unknown>).url)
-              }
-            }
-            if (rawPrice && currency) break outer
+        for (const selector of selectors) {
+          const candidates: string[] = []
+          for (const el of Array.from(document.querySelectorAll(selector))) {
+            if (isExcluded(el as Element)) continue
+            const content   = (el as Element).getAttribute("content")?.trim()
+            const dataPrice = (el as Element).getAttribute("data-price")?.trim()
+            const text      = (el as Element).textContent?.trim()
+            const val = content ?? dataPrice ?? text ?? ""
+            if (val && /\d/.test(val)) candidates.push(val)
           }
-        } catch {
-          // ignore malformed JSON-LD
+          if (candidates.length > 0) {
+            const filtered = candidates.filter(c => !/^\s*-?\d{1,3}\s*%\s*$/.test(c))
+            const pool = filtered.length > 0 ? filtered : candidates
+            // Within this selector's matches, pick the minimum (sale < original)
+            rawPrice = pool.reduce((best, c) =>
+              parseNum(c) < parseNum(best) ? c : best
+            )
+            break
+          }
         }
       }
 
@@ -306,7 +382,6 @@ export async function scrapeProduct(
       //    Two passes: first look for price+currency together, then accept pure price patterns.
       if (!rawPrice) {
         const priceWithCurrRe = /(?:[$€£¥₩₹]|kr\.?|DKK|NOK|SEK|USD|EUR|GBP)\s*[\d.,]+|[\d.,]+\s*(?:[$€£¥₩₹]|kr\.?|DKK|NOK|SEK|USD|EUR|GBP)/i
-        // Matches "299,00" or "1.299" or "299.00" but not plain integers like "42" (size numbers)
         const purePriceRe = /^\d{1,6}[.,]\d{2}$|^\d{1,3}\.\d{3}$/
         const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT)
         let node = walker.nextNode() as Element | null
@@ -341,23 +416,52 @@ export async function scrapeProduct(
         jsonLdImage ??
         null
 
-      // If no meta image, fall back to the largest visible <img> on the page
+      // If no meta image, fall back to the largest visible <img> on the page.
+      // Also checks data-src / data-lazy-src for lazy-loaded images (React SPAs often
+      // set the real URL there before the IntersectionObserver swaps it into src).
       let ogImage = rawOgImage ?? ""
       if (!ogImage) {
         let bestImg = ""
         let bestArea = 0
-        document.querySelectorAll("img[src]").forEach((el) => {
+        document.querySelectorAll("img").forEach((el) => {
           const img = el as HTMLImageElement
-          const src = img.getAttribute("src") ?? ""
-          if (!src || src.startsWith("data:") || src.includes("logo") || src.includes("icon")) return
-          const area = img.naturalWidth * img.naturalHeight || img.width * img.height
+          const src =
+            img.getAttribute("src") ||
+            img.getAttribute("data-src") ||
+            img.getAttribute("data-lazy-src") ||
+            img.getAttribute("data-original") ||
+            img.getAttribute("data-image") ||
+            ""
+          if (!src || src.startsWith("data:") || src.includes("logo") || src.includes("icon") || src.includes("pixel") || src.includes("placeholder")) return
+          // Prefer images whose naturalWidth is known; fall back to attribute dimensions
+          const w = img.naturalWidth  || img.width  || parseInt(img.getAttribute("width")  ?? "0") || 0
+          const h = img.naturalHeight || img.height || parseInt(img.getAttribute("height") ?? "0") || 0
+          const area = w * h
           if (area > bestArea) { bestArea = area; bestImg = src }
         })
+        // If area-based pick failed (all images had 0 dimensions, e.g. pure lazy-load),
+        // fall back to the first non-trivial <img> src or data-src on the page.
+        if (!bestImg) {
+          for (const el of Array.from(document.querySelectorAll("img"))) {
+            const img = el as HTMLImageElement
+            const src =
+              img.getAttribute("src") ||
+              img.getAttribute("data-src") ||
+              img.getAttribute("data-lazy-src") ||
+              img.getAttribute("data-original") ||
+              ""
+            if (src && !src.startsWith("data:") && !src.includes("logo") && !src.includes("icon") && !src.includes("pixel") && !src.includes("placeholder")) {
+              bestImg = src
+              break
+            }
+          }
+        }
         ogImage = bestImg
       }
 
-      // Resolve protocol-relative URLs (//example.com/img.jpg)
+      // Resolve protocol-relative and root-relative URLs
       if (ogImage.startsWith("//")) ogImage = "https:" + ogImage
+      else if (ogImage.startsWith("/")) ogImage = window.location.origin + ogImage
 
       // Facebook/Open Graph product meta — many Shopify/BigCommerce/Magento sites use these
       if (!rawPrice) {
@@ -379,6 +483,12 @@ export async function scrapeProduct(
         "[class*='was-price' i]",
         "[class*='regular-price' i]",
         "[class*='strikethrough' i]",
+        "[class*='foer-price' i]",
+        "[class*='foerpris' i]",
+        "[class*='before-price' i]",
+        "[class*='former-price' i]",
+        "[class*='list-price' i]",
+        "[class*='rrp' i]",
       ]
       let rawComparePrice: string | null = null
       for (const sel of COMPARE_SELECTORS) {
@@ -390,6 +500,21 @@ export async function scrapeProduct(
           }
         }
         if (rawComparePrice) break
+      }
+      if (!rawComparePrice) {
+        const beforePriceRe = /(?:normalpris|vejledende|listepris|normpris|f[øo]r(?:pris)?|was\s+price|was:|before:|regular\s+price|avant|prima\s+era|tilbudspris|ursprungspris|vejl\.?\s*pris)[:\s]+[\d][\d\s.,]*/i
+        const walker2 = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT)
+        let node2 = walker2.nextNode() as Element | null
+        while (node2) {
+          if ((node2 as Element).children.length === 0) {
+            const text = ((node2 as Element).textContent ?? "").trim()
+            if (text.length > 0 && text.length < 60 && beforePriceRe.test(text)) {
+              const numMatch = text.match(/[\d][\d\s.,]+/)
+              if (numMatch) { rawComparePrice = numMatch[0].trim(); break }
+            }
+          }
+          node2 = walker2.nextNode() as Element | null
+        }
       }
 
       // Detect block pages that serve 200 OK (e.g. Akamai, Cloudflare JS challenge)

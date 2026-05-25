@@ -65,8 +65,8 @@ export const ProductCard = memo(function ProductCard({
 
         {/* Thumbnail */}
         <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-slate-100">
-          {item.image ? (
-            <Image src={item.image} alt={item.name} fill className="object-cover" />
+          {item.image && (item.image.startsWith("http://") || item.image.startsWith("https://")) ? (
+            <Image src={item.image} alt={item.name} fill unoptimized className="object-cover" />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-xl opacity-30">📦</div>
           )}
@@ -161,11 +161,12 @@ export const ProductCard = memo(function ProductCard({
 
         {/* Product image */}
         <div className="relative aspect-square w-full overflow-hidden rounded-t-2xl bg-slate-100">
-          {item.image ? (
+          {item.image && (item.image.startsWith("http://") || item.image.startsWith("https://")) ? (
             <Image
               src={item.image}
               alt={item.name}
               fill
+              unoptimized
               priority={priority}
               className="object-cover transition-transform duration-300 group-hover:scale-105"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
