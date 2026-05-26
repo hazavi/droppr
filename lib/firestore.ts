@@ -20,7 +20,14 @@ import {
   getCountFromServer,
 } from "firebase/firestore"
 import { db } from "./firebase"
+import { cacheGet, cacheSet, cacheInvalidate } from "./cache"
 import type { TrackedItem, ItemList, UserProfile, PricePoint } from "@/types"
+
+const TTL = {
+  USER_PROFILE: 10 * 60 * 1000,   // 10 min
+  PRICE_HISTORY: 5 * 60 * 1000,   // 5 min
+  DASHBOARD: 2 * 60 * 1000,       // 2 min
+}
 
 // ─── Converters ──────────────────────────────────────────────────────────────
 
@@ -83,16 +90,24 @@ export async function createUserProfile(
 }
 
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
+  const key = `user-profile:${uid}`
+  const hit = cacheGet<UserProfile | null>(key)
+  if (hit !== undefined) return hit
   const snap = await getDoc(doc(db, "users", uid))
-  if (!snap.exists()) return null
+  if (!snap.exists()) {
+    cacheSet(key, null, TTL.USER_PROFILE)
+    return null
+  }
   const data = snap.data() as Record<string, unknown>
-  return {
+  const profile: UserProfile = {
     uid,
     email: (data.email as string) ?? "",
     displayName: (data.displayName as string) ?? "",
     notifyVia: "email",
     emailNotificationsEnabled: (data.emailNotificationsEnabled as boolean) ?? true,
   }
+  cacheSet(key, profile, TTL.USER_PROFILE)
+  return profile
 }
 
 export async function updateUserProfile(
@@ -100,6 +115,7 @@ export async function updateUserProfile(
   updates: Partial<Omit<UserProfile, "uid">>
 ): Promise<void> {
   await updateDoc(doc(db, "users", uid), updates)
+  cacheInvalidate(`user-profile:${uid}`)
 }
 
 // ─── Lists ────────────────────────────────────────────────────────────────────
@@ -347,6 +363,8 @@ export async function addItem(
   await updateDoc(doc(db, "users", uid, "lists", listId), {
     itemCount: increment(1),
   })
+  cacheInvalidate(`recently-added:${uid}`)
+  cacheInvalidate(`recently-dropped:${uid}`)
   return ref.id
 }
 
@@ -360,6 +378,8 @@ export async function updateItem(
     doc(db, "users", uid, "lists", listId, "items", itemId),
     updates
   )
+  cacheInvalidate(`recently-dropped:${uid}`)
+  cacheInvalidate(`price-history:${uid}:${listId}:${itemId}`)
 }
 
 export async function deleteItem(
@@ -371,6 +391,9 @@ export async function deleteItem(
   await updateDoc(doc(db, "users", uid, "lists", listId), {
     itemCount: increment(-1),
   })
+  cacheInvalidate(`recently-added:${uid}`)
+  cacheInvalidate(`recently-dropped:${uid}`)
+  cacheInvalidate(`price-history:${uid}:${listId}:${itemId}`)
 }
 
 export async function deleteItems(
@@ -445,6 +468,9 @@ export async function getPriceHistory(
   listId: string,
   itemId: string
 ): Promise<PricePoint[]> {
+  const key = `price-history:${uid}:${listId}:${itemId}`
+  const hit = cacheGet<PricePoint[]>(key)
+  if (hit) return hit
   const q = query(
     collection(
       db,
@@ -460,7 +486,7 @@ export async function getPriceHistory(
     limit(90)
   )
   const snap = await getDocs(q)
-  return snap.docs.map((d) => {
+  const result = snap.docs.map((d) => {
     const data = d.data() as Record<string, unknown>
     return {
       id: d.id,
@@ -468,6 +494,8 @@ export async function getPriceHistory(
       recordedAt: toDate(data.recordedAt),
     }
   })
+  cacheSet(key, result, TTL.PRICE_HISTORY)
+  return result
 }
 
 // ─── Dashboard helpers ────────────────────────────────────────────────────────
@@ -476,6 +504,9 @@ export async function getRecentlyDropped(
   uid: string,
   count = 6
 ): Promise<TrackedItem[]> {
+  const key = `recently-dropped:${uid}:${count}`
+  const hit = cacheGet<TrackedItem[]>(key)
+  if (hit) return hit
   const listsSnap = await getDocs(collection(db, "users", uid, "lists"))
   const perList = await Promise.all(
     listsSnap.docs.map((listDoc) =>
@@ -487,16 +518,21 @@ export async function getRecentlyDropped(
       )
     )
   )
-  return perList
+  const result = perList
     .flatMap((snap) => snap.docs.map((d) => toTrackedItem(d.id, d.data() as Record<string, unknown>)))
     .sort((a, b) => b.lastChecked.getTime() - a.lastChecked.getTime())
     .slice(0, count)
+  cacheSet(key, result, TTL.DASHBOARD)
+  return result
 }
 
 export async function getRecentlyAdded(
   uid: string,
   count = 6
 ): Promise<TrackedItem[]> {
+  const key = `recently-added:${uid}:${count}`
+  const hit = cacheGet<TrackedItem[]>(key)
+  if (hit) return hit
   const listsSnap = await getDocs(collection(db, "users", uid, "lists"))
   const perList = await Promise.all(
     listsSnap.docs.map((listDoc) =>
@@ -509,10 +545,12 @@ export async function getRecentlyAdded(
       )
     )
   )
-  return perList
+  const result = perList
     .flatMap((snap) => snap.docs.map((d) => toTrackedItem(d.id, d.data() as Record<string, unknown>)))
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     .slice(0, count)
+  cacheSet(key, result, TTL.DASHBOARD)
+  return result
 }
 
 // ─── Server-side (cron) helpers ───────────────────────────────────────────────
