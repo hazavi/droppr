@@ -38,7 +38,7 @@ export function AlertConfigModal({ open, onClose, item, listId }: AlertConfigMod
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      alertType: item.alertType,
+      alertType: (item.alertType === "any" ? "percent" : item.alertType) as "fixed" | "percent",
       alertValue: item.alertValue,
     },
   })

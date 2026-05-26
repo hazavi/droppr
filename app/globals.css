@@ -135,4 +135,13 @@ a {
   border-radius: 99px;
 }
 
+/* ─── Scrollbar hide utility ────────────────────────────────────────── */
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 
