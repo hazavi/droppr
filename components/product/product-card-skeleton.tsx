@@ -1,7 +1,7 @@
-export function ProductCardSkeleton() {
+export function ProductCardSkeleton({ imageAspect = "aspect-square" }: { imageAspect?: string }) {
   return (
     <div className="flex flex-col rounded-xl border border-slate-200 bg-white overflow-hidden animate-pulse">
-      <div className="aspect-square w-full bg-slate-100" />
+      <div className={`w-full bg-slate-100 ${imageAspect}`} />
       <div className="flex flex-col gap-3 p-4">
         <div className="space-y-2">
           <div className="h-3 w-20 rounded bg-slate-200" />

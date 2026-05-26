@@ -25,6 +25,7 @@ interface ProductCardProps {
   selectionActive?: boolean
   priority?: boolean
   viewMode?: ViewMode
+  imageAspect?: string
 }
 
 export const ProductCard = memo(function ProductCard({
@@ -34,6 +35,7 @@ export const ProductCard = memo(function ProductCard({
   selectionActive,
   priority = false,
   viewMode = "4",
+  imageAspect = "aspect-square",
 }: ProductCardProps) {
   const hasDrop = item.priceDrop > 0
 
@@ -128,10 +130,11 @@ export const ProductCard = memo(function ProductCard({
       animate="visible"
       whileHover={{ scale: 1.02, y: -2 }}
       transition={{ duration: 0.2 }}
+      className="h-full"
     >
       <GlassEffect
         className={cn(
-          "group relative flex flex-col rounded-2xl cursor-pointer",
+          "group relative flex flex-col rounded-2xl cursor-pointer h-full",
           isSelected && "ring-2 ring-indigo-400/60",
         )}
       >
@@ -152,15 +155,16 @@ export const ProductCard = memo(function ProductCard({
           </button>
         )}
 
-        {/* Sale badge */}
-        {hasDrop && (
-          <span className="absolute right-3 top-3 z-10 rounded-full border border-red-200 bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700">
-            Sale
-          </span>
-        )}
+        {/* Content wrapper — flex-col so info flex-1 works and footer stays pinned */}
+        <div className="flex flex-col h-full">
 
         {/* Product image */}
-        <div className="relative aspect-square w-full overflow-hidden rounded-t-2xl bg-slate-100">
+        <div className={cn("relative w-full overflow-hidden rounded-t-2xl bg-slate-100", imageAspect)}>
+          {hasDrop && (
+            <span className="absolute right-2.5 top-2.5 z-10 rounded-full border border-red-200 bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700">
+              Sale
+            </span>
+          )}
           {item.image && (item.image.startsWith("http://") || item.image.startsWith("https://")) ? (
             <Image
               src={item.image}
@@ -225,6 +229,8 @@ export const ProductCard = memo(function ProductCard({
             </Link>
           </div>
         </div>
+
+        </div>{/* end content wrapper */}
       </GlassEffect>
     </motion.div>
   )

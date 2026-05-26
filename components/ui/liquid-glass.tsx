@@ -89,7 +89,7 @@ export const GlassEffect: React.FC<GlassEffectProps> = ({
     {/* Layer 3 – highlight edge shine */}
     <div className="absolute inset-0 z-20 glass-shine" />
     {/* Content */}
-    <div className="relative z-30">{children}</div>
+    <div className="relative z-30 flex-1">{children}</div>
   </div>
 )
 
