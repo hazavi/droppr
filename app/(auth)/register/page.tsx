@@ -7,7 +7,8 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { motion } from "framer-motion"
-import { Loader2, Zap } from "lucide-react"
+import Image from "next/image"
+import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { useAuthContext } from "@/components/providers/auth-provider"
 
@@ -70,17 +71,16 @@ export default function RegisterPage() {
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
+      transition={{ duration: 0.4 }}
+      className="relative z-10 w-full"
     >
       <div className="mb-8 flex flex-col items-center text-center">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500 mb-3">
-          <Zap className="h-5 w-5 text-white" />
-        </div>
+        <Image src="/droppr.png" alt="Droppr" width={64} height={64} className="mb-1" />
         <h1 className="text-2xl font-bold text-slate-900">Create your account</h1>
         <p className="mt-1.5 text-sm text-slate-500">Start tracking prices for free</p>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+      <div className="rounded-2xl border border-white/60 bg-white/75 p-6 shadow-2xl shadow-slate-300/40 backdrop-blur-xl">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-700">
@@ -91,7 +91,7 @@ export default function RegisterPage() {
               type="text"
               autoComplete="name"
               placeholder="Alex Smith"
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/40 shadow-sm"
+              className="w-full rounded-lg border border-slate-200/80 bg-white/60 px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/40 shadow-sm backdrop-blur-sm"
             />
             {errors.displayName && (
               <p className="mt-1 text-xs text-red-500">{errors.displayName.message}</p>
@@ -107,7 +107,7 @@ export default function RegisterPage() {
               type="email"
               autoComplete="email"
               placeholder="you@example.com"
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/40 shadow-sm"
+              className="w-full rounded-lg border border-slate-200/80 bg-white/60 px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/40 shadow-sm backdrop-blur-sm"
             />
             {errors.email && (
               <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>
@@ -123,7 +123,7 @@ export default function RegisterPage() {
               type="password"
               autoComplete="new-password"
               placeholder="••••••••"
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/40 shadow-sm"
+              className="w-full rounded-lg border border-slate-200/80 bg-white/60 px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/40 shadow-sm backdrop-blur-sm"
             />
             {errors.password && (
               <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>
@@ -139,7 +139,7 @@ export default function RegisterPage() {
               type="password"
               autoComplete="new-password"
               placeholder="••••••••"
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/40 shadow-sm"
+              className="w-full rounded-lg border border-slate-200/80 bg-white/60 px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/40 shadow-sm backdrop-blur-sm"
             />
             {errors.confirmPassword && (
               <p className="mt-1 text-xs text-red-500">{errors.confirmPassword.message}</p>
@@ -149,7 +149,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-indigo-500 to-violet-600 py-2.5 text-sm font-semibold text-white transition hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-500/25 disabled:opacity-60"
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
             Create Account
@@ -157,15 +157,15 @@ export default function RegisterPage() {
         </form>
 
         <div className="my-4 flex items-center gap-3">
-          <div className="flex-1 h-px bg-slate-200" />
+          <div className="flex-1 h-px bg-slate-200/80" />
           <span className="text-xs text-slate-400">or</span>
-          <div className="flex-1 h-px bg-slate-200" />
+          <div className="flex-1 h-px bg-slate-200/80" />
         </div>
 
         <button
           onClick={handleGoogle}
           disabled={googleLoading}
-          className="flex w-full items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60 shadow-sm"
+          className="flex w-full items-center justify-center gap-3 rounded-lg border border-slate-200/80 bg-white/60 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-white/90 disabled:opacity-60 shadow-sm backdrop-blur-sm"
         >
           {googleLoading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -183,7 +183,7 @@ export default function RegisterPage() {
 
       <p className="mt-4 text-center text-sm text-slate-500">
         Already have an account?{" "}
-        <Link href="/login" className="text-indigo-600 hover:text-indigo-700">
+        <Link href="/login" className="font-medium text-indigo-600 hover:text-indigo-700">
           Sign in
         </Link>
       </p>
