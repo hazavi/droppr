@@ -30,3 +30,21 @@ export function shouldAlert(item, oldPrice) {
   if (item.alertType === "percent") return dropPercent(item) >= item.alertValue
   return true
 }
+
+export function applyPriceResult(item, result, checkedAt = Date.now()) {
+  if (!result || result.error || !Number.isFinite(result.price) || result.price <= 0) {
+    return { ok: false, reason: result?.error || "Price not found on the product page" }
+  }
+  if (result.currency !== item.currency && result.currencySource !== "fallback") {
+    return { ok: false, reason: `Page currency ${result.currency || "unknown"} differs from saved ${item.currency}` }
+  }
+  const previousPrice = item.currentPrice
+  const previousOriginal = item.originalPrice
+  item.currentPrice = result.price
+  if (Number.isFinite(result.comparePrice) && result.comparePrice > item.originalPrice) item.originalPrice = result.comparePrice
+  item.lastChecked = checkedAt
+  item.lastError = ""
+  const changed = Math.abs(previousPrice - item.currentPrice) > 0.001
+  if (changed) item.history = [...(item.history || []), { price: item.currentPrice, at: checkedAt }].slice(-30)
+  return { ok: true, changed, dealChanged: previousOriginal !== item.originalPrice, alert: shouldAlert(item, previousPrice) }
+}

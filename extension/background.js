@@ -1,5 +1,5 @@
 import { extractProduct } from "./scrape.js"
-import { readStore, saveStore, priceText, shouldAlert } from "./store.js"
+import { readStore, saveStore, priceText, applyPriceResult } from "./store.js"
 
 const ALARM = "droppr-price-check"
 
@@ -25,9 +25,14 @@ async function readInTab(url) {
       chrome.tabs.onUpdated.addListener(listener)
       if (tab.status === "complete") { clearTimeout(timer); chrome.tabs.onUpdated.removeListener(listener); resolve() }
     })
-    await new Promise((resolve) => setTimeout(resolve, 1200))
-    const [result] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: extractProduct })
-    return result?.result
+    let latest
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 1800))
+      const [result] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: extractProduct })
+      if (result?.result && !result.result.error) latest = result.result
+      if (latest?.comparePrice > latest?.price) break
+    }
+    return latest
   } finally {
     if (tab.id) await chrome.tabs.remove(tab.id).catch(() => {})
   }
@@ -35,34 +40,45 @@ async function readInTab(url) {
 
 let checking = false
 async function checkPrices() {
-  if (checking) return { checked: 0, updated: 0 }
+  if (checking) return { busy: true, checked: 0, updated: 0, failed: 0 }
   checking = true
-  const summary = { checked: 0, updated: 0 }
+  const summary = { checked: 0, updated: 0, failed: 0 }
   try {
     const initial = await readStore()
     for (const item of initial.items) {
+      let failure = ""
       try {
         const origin = new URL(item.url).origin + "/*"
-        if (!(await chrome.permissions.contains({ origins: [origin] }))) continue
+        if (!(await chrome.permissions.contains({ origins: [origin] }))) {
+          failure = "Site access missing. Open this product and refresh it in Droppr."
+          continue
+        }
         const result = await readInTab(item.url)
-        if (!result || result.error || !Number.isFinite(result.price) || result.currency !== item.currency) continue
-        summary.checked++
         const store = await readStore()
         const current = store.items.find((entry) => entry.id === item.id)
         if (!current) continue
-        const oldPrice = current.currentPrice
-        current.currentPrice = result.price
-        current.lastChecked = Date.now()
-        current.history = [...(current.history || []), { price: result.price, at: Date.now() }].slice(-30)
+        const applied = applyPriceResult(current, result)
+        if (!applied.ok) { failure = applied.reason; continue }
         await saveStore(store)
-        if (Math.abs(oldPrice - result.price) > 0.001) summary.updated++
-        if (store.settings.notifications && shouldAlert(current, oldPrice)) {
+        summary.checked++
+        if (applied.changed) summary.updated++
+        if (store.settings.notifications && applied.alert) {
           await chrome.notifications.create(`droppr-${current.id}-${Date.now()}`, {
             type: "basic", iconUrl: "icons/droppr.png", title: "Price dropped on Droppr",
             message: `${current.name} is now ${priceText(current.currentPrice, current.currency)}`,
           })
         }
-      } catch (error) { console.warn("Droppr check failed:", item.url, error) }
+      } catch (error) {
+        failure = error instanceof Error ? error.message : "Could not load product page"
+        console.warn("Droppr check failed:", item.url, error)
+      } finally {
+        if (failure) {
+          summary.failed++
+          const store = await readStore()
+          const current = store.items.find((entry) => entry.id === item.id)
+          if (current) { current.lastError = failure; await saveStore(store) }
+        }
+      }
     }
   } finally { checking = false }
   return summary
