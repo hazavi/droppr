@@ -1,5 +1,5 @@
 import { extractProduct } from "./scrape.js"
-import { readStore, saveStore, priceText, isDeal, dropPercent, DEFAULT_LIST_ID } from "./store.js"
+import { readStore, saveStore, priceText, isDeal, dropPercent, applyPriceResult, DEFAULT_LIST_ID } from "./store.js"
 
 const view = document.querySelector("#view")
 const nav = document.querySelector(".dock")
@@ -16,6 +16,11 @@ const productUrl = (url) => { try { const parsed = new URL(url); return /^https?
 const alertLabel = (item) => item.alertType === "fixed" ? `Below ${priceText(item.alertValue, item.currency)}` : item.alertType === "percent" ? `${item.alertValue}% drop` : "Any drop"
 const currencies = ["DKK", "NOK", "SEK", "EUR", "GBP", "USD", "CHF", "CAD", "AUD"]
 const currencyOptions = (selected) => [...new Set([selected, ...currencies])].map((code) => `<option value="${safe(code)}" ${code === selected ? "selected" : ""}>${safe(code)}</option>`).join("")
+const samePage = (left, right) => {
+  const a = productUrl(left), b = productUrl(right)
+  return !!a && !!b && a.origin === b.origin && a.pathname.replace(/\/$/, "") === b.pathname.replace(/\/$/, "") && (!a.searchParams.get("v1") || !b.searchParams.get("v1") || a.searchParams.get("v1") === b.searchParams.get("v1"))
+}
+const trackedOnCurrentTab = () => store.items.find((item) => currentTab && samePage(item.url, currentTab.url))
 
 async function activeTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
@@ -29,7 +34,7 @@ function itemCard(item) {
   const points = prices.map((price, index) => `${Math.round(index * 58 / Math.max(1, prices.length - 1))},${Math.round(24 - (price - low) * 19 / Math.max(0.01, high - low))}`).join(" ")
   return `<article class="item glass">
     <div class="item-image">${item.image ? `<img src="${safe(item.image)}" alt="" />` : "◈"}</div>
-    <div class="item-copy"><span>${safe(item.siteName)}</span><a href="${safe(item.url)}" class="item-name" data-open="${safe(item.url)}">${safe(item.name)}</a><div class="price-row"><strong>${safe(priceText(item.currentPrice, item.currency))}</strong><select class="currency-edit" data-currency-id="${safe(item.id)}" aria-label="Currency for ${safe(item.name)}">${currencyOptions(item.currency)}</select></div><small>${isDeal(item) ? `<b>↓ ${dropPercent(item)}% from saved price</b>` : safe(alertLabel(item))}</small></div>
+    <div class="item-copy"><span>${safe(item.siteName)}</span><a href="${safe(item.url)}" class="item-name" data-open="${safe(item.url)}">${safe(item.name)}</a><div class="price-row"><strong>${safe(priceText(item.currentPrice, item.currency))}</strong><select class="currency-edit" data-currency-id="${safe(item.id)}" aria-label="Currency for ${safe(item.name)}">${currencyOptions(item.currency)}</select></div><small>${isDeal(item) ? `<b>↓ ${dropPercent(item)}% from saved price</b>` : safe(alertLabel(item))}</small>${item.lastError ? `<small class="check-error" title="${safe(item.lastError)}">Check failed: ${safe(item.lastError)}</small>` : ""}</div>
     ${prices.length > 1 ? `<svg class="sparkline" viewBox="0 0 58 28" aria-label="Price history"><polyline points="${points}" /></svg>` : ""}
     <button class="item-remove" data-remove="${safe(item.id)}" aria-label="Remove ${safe(item.name)}">×</button>
   </article>`
@@ -45,7 +50,8 @@ function render() {
   if (page === "home") {
     const recent = [...store.items].sort((a, b) => b.createdAt - a.createdAt).slice(0, 4)
     const deals = store.items.filter(isDeal).sort((a, b) => dropPercent(b) - dropPercent(a)).slice(0, 3)
-    view.innerHTML = `${toast}<section class="hero glass"><span class="eyebrow">TRACK WHAT YOU LOVE</span><h1>Catch the price drop.</h1><p>Save a product from the page you’re viewing. Droppr will check it every six hours.</p><button id="capture" class="primary" ${currentTab ? "" : "disabled"}>＋ Track this page</button>${currentTab ? `<span class="tab-hint">${safe(new URL(currentTab.url).hostname)}</span>` : `<span class="tab-hint">Open a product page to start</span>`}</section>
+    const trackedHere = trackedOnCurrentTab()
+    view.innerHTML = `${toast}<section class="hero glass"><span class="eyebrow">TRACK WHAT YOU LOVE</span><h1>Catch the price drop.</h1><p>Save a product from the page you’re viewing. Droppr will check it every six hours.</p><button id="${trackedHere ? "refresh-page" : "capture"}" class="primary" ${currentTab ? "" : "disabled"}>${trackedHere ? "↻ Refresh this page" : "＋ Track this page"}</button>${currentTab ? `<span class="tab-hint">${safe(new URL(currentTab.url).hostname)}</span>` : `<span class="tab-hint">Open a product page to start</span>`}</section>
     ${product ? preview() : ""}
     <div class="section-title"><h2>Recently added</h2><span>${store.items.length} tracked</span></div>${recent.length ? recent.map(itemCard).join("") : empty("⌁", "Nothing tracked yet", "Open a product page and save it here.")}
     <div class="section-title"><h2>Recently dropped</h2><span>${store.items.filter(isDeal).length} deals</span></div>${deals.length ? deals.map(itemCard).join("") : empty("↘", "No price drops yet", "Your deals will show here as prices fall.")}`
@@ -85,13 +91,31 @@ async function capture() {
   } catch { flash("This page cannot be read. Try a regular product page.") }
 }
 
+async function refreshCurrentPage(silent = false) {
+  const tracked = trackedOnCurrentTab()
+  if (!tracked || !currentTab?.id) return
+  try {
+    const [response] = await chrome.scripting.executeScript({ target: { tabId: currentTab.id }, func: extractProduct })
+    const result = response?.result
+    store = await readStore()
+    const item = store.items.find((entry) => entry.id === tracked.id)
+    if (!item) return
+    const applied = applyPriceResult(item, result)
+    if (!applied.ok) { item.lastError = applied.reason; await saveStore(store); if (!silent) flash(applied.reason); return }
+    await saveStore(store)
+    if (applied.changed || applied.dealChanged) flash(`Price updated to ${priceText(item.currentPrice, item.currency)}.`)
+    else if (!silent) flash("Price is up to date.")
+    else render()
+  } catch { if (!silent) flash("Could not read this product page.") }
+}
+
 async function saveProduct() {
   if (!product) return
   if (store.items.some((item) => item.url === product.url)) return flash("This page is already tracked.")
   const type = document.querySelector("#alert-type").value
   const value = Number(document.querySelector("#threshold").value)
   if (type !== "any" && !(value > 0)) return flash("Enter a threshold greater than zero.")
-  store.items.push({ ...product, id: crypto.randomUUID(), listId: document.querySelector("#list-select").value || DEFAULT_LIST_ID, currentPrice: product.price, originalPrice: product.price, alertType: type, alertValue: type === "any" ? 0 : value, createdAt: Date.now(), lastChecked: Date.now(), history: [{ price: product.price, at: Date.now() }] })
+  store.items.push({ ...product, id: crypto.randomUUID(), listId: document.querySelector("#list-select").value || DEFAULT_LIST_ID, currentPrice: product.price, originalPrice: Math.max(product.price, product.comparePrice || 0), alertType: type, alertValue: type === "any" ? 0 : value, createdAt: Date.now(), lastChecked: Date.now(), history: [{ price: product.price, at: Date.now() }] })
   await saveStore(store)
   product = null
   flash("Price tracking started.")
@@ -101,6 +125,7 @@ view.addEventListener("click", async (event) => {
   const button = event.target.closest("button, a[data-open]")
   if (!button) return
   if (button.id === "capture") return capture()
+  if (button.id === "refresh-page") return refreshCurrentPage()
   if (button.id === "save-item") return saveProduct()
   if (button.id === "back-lists") { selectedList = null; return render() }
   if (button.dataset.list) { selectedList = button.dataset.list; return render() }
@@ -150,10 +175,13 @@ nav.addEventListener("click", (event) => {
 })
 async function runCheck() {
   flash("Checking saved products. This may take a minute…")
-  const result = await chrome.runtime.sendMessage({ type: "CHECK_PRICES" })
-  store = await readStore()
-  flash(result?.error ? `Check failed: ${result.error}` : `Checked ${result.checked} products; ${result.updated} prices changed.`)
+  try {
+    const result = await chrome.runtime.sendMessage({ type: "CHECK_PRICES" })
+    store = await readStore()
+    flash(result?.busy ? "A price check is already running." : result?.error ? `Check failed: ${result.error}` : `Checked ${result.checked} products; ${result.updated} prices changed${result.failed ? `; ${result.failed} need attention` : ""}.`)
+  } catch { flash("Price check could not start. Try again in a moment.") }
 }
 refresh.addEventListener("click", runCheck)
 chrome.storage.onChanged.addListener(async () => { store = await readStore(); render() })
 render()
+void refreshCurrentPage(true)

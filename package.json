@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "lint": "node --check extension/popup.js && node --check extension/background.js && node --check extension/scrape.js && node --check extension/store.js"
+    "lint": "node --check extension/popup.js && node --check extension/background.js && node --check extension/scrape.js && node --check extension/store.js",
+    "test": "node --test tests/*.test.mjs"
   }
 }
