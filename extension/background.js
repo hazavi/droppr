@@ -45,7 +45,7 @@ async function checkPrices() {
         const origin = new URL(item.url).origin + "/*"
         if (!(await chrome.permissions.contains({ origins: [origin] }))) continue
         const result = await readInTab(item.url)
-        if (!result || result.error || !Number.isFinite(result.price) || result.currency !== item.currency) continue
+        if (!result || result.error || !Number.isFinite(result.price) || (result.currency !== item.currency && result.currencySource !== "fallback")) continue
         summary.checked++
         const store = await readStore()
         const current = store.items.find((entry) => entry.id === item.id)

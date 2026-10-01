@@ -14,6 +14,8 @@ let notice = ""
 const safe = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char])
 const productUrl = (url) => { try { const parsed = new URL(url); return /^https?:$/.test(parsed.protocol) ? parsed : null } catch { return null } }
 const alertLabel = (item) => item.alertType === "fixed" ? `Below ${priceText(item.alertValue, item.currency)}` : item.alertType === "percent" ? `${item.alertValue}% drop` : "Any drop"
+const currencies = ["DKK", "NOK", "SEK", "EUR", "GBP", "USD", "CHF", "CAD", "AUD"]
+const currencyOptions = (selected) => [...new Set([selected, ...currencies])].map((code) => `<option value="${safe(code)}" ${code === selected ? "selected" : ""}>${safe(code)}</option>`).join("")
 
 async function activeTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
@@ -27,7 +29,7 @@ function itemCard(item) {
   const points = prices.map((price, index) => `${Math.round(index * 58 / Math.max(1, prices.length - 1))},${Math.round(24 - (price - low) * 19 / Math.max(0.01, high - low))}`).join(" ")
   return `<article class="item glass">
     <div class="item-image">${item.image ? `<img src="${safe(item.image)}" alt="" />` : "◈"}</div>
-    <div class="item-copy"><span>${safe(item.siteName)}</span><a href="${safe(item.url)}" class="item-name" data-open="${safe(item.url)}">${safe(item.name)}</a><strong>${safe(priceText(item.currentPrice, item.currency))}</strong><small>${isDeal(item) ? `<b>↓ ${dropPercent(item)}% from saved price</b>` : safe(alertLabel(item))}</small></div>
+    <div class="item-copy"><span>${safe(item.siteName)}</span><a href="${safe(item.url)}" class="item-name" data-open="${safe(item.url)}">${safe(item.name)}</a><div class="price-row"><strong>${safe(priceText(item.currentPrice, item.currency))}</strong><select class="currency-edit" data-currency-id="${safe(item.id)}" aria-label="Currency for ${safe(item.name)}">${currencyOptions(item.currency)}</select></div><small>${isDeal(item) ? `<b>↓ ${dropPercent(item)}% from saved price</b>` : safe(alertLabel(item))}</small></div>
     ${prices.length > 1 ? `<svg class="sparkline" viewBox="0 0 58 28" aria-label="Price history"><polyline points="${points}" /></svg>` : ""}
     <button class="item-remove" data-remove="${safe(item.id)}" aria-label="Remove ${safe(item.name)}">×</button>
   </article>`
@@ -62,7 +64,7 @@ function render() {
 }
 
 function preview() {
-  return `<section class="preview glass"><span class="eyebrow">PRODUCT FOUND</span><div class="preview-row">${product.image ? `<img src="${safe(product.image)}" alt="" />` : ""}<div><span>${safe(product.siteName)}</span><strong>${safe(product.name)}</strong><b>${safe(priceText(product.price, product.currency))}</b></div></div><div class="preview-controls"><label>Save to list<select id="list-select">${store.lists.map((list) => `<option value="${safe(list.id)}">${safe(list.name)}</option>`).join("")}</select></label><label>Alert me on<select id="alert-type"><option value="any">Any drop</option><option value="percent">% drop</option><option value="fixed">Target price</option></select></label><label id="threshold-wrap" hidden>Threshold<input id="threshold" type="number" min="0.01" step="0.01" value="10" /></label></div><button id="save-item" class="primary">Start tracking</button></section>`
+  return `<section class="preview glass"><span class="eyebrow">PRODUCT FOUND</span><div class="preview-row">${product.image ? `<img src="${safe(product.image)}" alt="" />` : ""}<div><span>${safe(product.siteName)}</span><strong>${safe(product.name)}</strong><b id="preview-price">${safe(priceText(product.price, product.currency))}</b></div></div><div class="preview-controls"><label>Save to list<select id="list-select">${store.lists.map((list) => `<option value="${safe(list.id)}">${safe(list.name)}</option>`).join("")}</select></label><label>Currency<select id="preview-currency">${currencyOptions(product.currency)}</select></label><label>Alert me on<select id="alert-type"><option value="any">Any drop</option><option value="percent">% drop</option><option value="fixed">Target price</option></select></label><label id="threshold-wrap" hidden>Threshold<input id="threshold" type="number" min="0.01" step="0.01" value="10" /></label></div><button id="save-item" class="primary">Start tracking</button></section>`
 }
 
 function flash(message) { notice = message; render(); setTimeout(() => { if (notice === message) { notice = ""; render() } }, 4000) }
@@ -123,6 +125,14 @@ view.addEventListener("submit", async (event) => {
 })
 view.addEventListener("change", async (event) => {
   if (event.target.id === "alert-type") document.querySelector("#threshold-wrap").hidden = event.target.value === "any"
+  if (event.target.id === "preview-currency" && product) {
+    product.currency = event.target.value
+    document.querySelector("#preview-price").textContent = priceText(product.price, product.currency)
+  }
+  if (event.target.dataset.currencyId) {
+    const item = store.items.find((entry) => entry.id === event.target.dataset.currencyId)
+    if (item) { item.currency = event.target.value; await saveStore(store); flash("Currency updated.") }
+  }
   if (event.target.id === "notifications") { store.settings.notifications = event.target.checked; await saveStore(store) }
   if (event.target.id === "import") {
     try {
