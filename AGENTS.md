@@ -1,5 +1,3 @@
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
+# Droppr extension
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-<!-- END:nextjs-agent-rules -->
+Droppr is a Manifest V3 browser extension. Edit source files in `extension/`, then run `npm run lint` and `npm run build`. The unpacked extension is generated in `dist/`.

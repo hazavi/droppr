@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Droppr</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="aurora" aria-hidden="true"></div>
+    <div class="shell">
+      <header class="header">
+        <div class="brand"><img src="icons/droppr.png" alt="" /><div><span>DROPPR</span><strong id="greeting">Your price watch</strong></div></div>
+        <button id="refresh" class="icon-button" title="Check prices now" aria-label="Check prices now">↻</button>
+      </header>
+      <main id="view" aria-live="polite"></main>
+      <nav class="dock" aria-label="Main navigation">
+        <button data-view="home" class="active"><span>⌂</span>Home</button>
+        <button data-view="lists"><span>▦</span>Lists</button>
+        <button data-view="deals"><span>↘</span>Deals</button>
+        <button data-view="settings"><span>⚙</span>Settings</button>
+      </nav>
+    </div>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
