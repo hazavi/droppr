@@ -10,16 +10,16 @@ export function extractProduct() {
 
   const currencyIn = (value) => {
     const s = text(value).toUpperCase()
-    if (/\b(?:DKK|DKR)\b/.test(s)) return "DKK"
-    if (/\bNOK\b/.test(s)) return "NOK"
-    if (/\bSEK\b/.test(s)) return "SEK"
-    if (/\bEUR\b|\u20AC/.test(s)) return "EUR"
-    if (/\bGBP\b|\u00A3/.test(s)) return "GBP"
-    if (/\bCHF\b/.test(s)) return "CHF"
-    if (/\bCAD\b|CA\$/.test(s)) return "CAD"
-    if (/\bAUD\b|AU\$|A\$/.test(s)) return "AUD"
-    if (/\bUSD\b|US\$/.test(s)) return "USD"
-    if (/(?:^|[^A-Z])KR\.?\b/.test(s)) return localeCurrency || "DKK"
+    if (/(?:^|[^A-Z])(?:DKK|DKR)(?=$|[^A-Z])/.test(s)) return "DKK"
+    if (/(?:^|[^A-Z])NOK(?=$|[^A-Z])/.test(s)) return "NOK"
+    if (/(?:^|[^A-Z])SEK(?=$|[^A-Z])/.test(s)) return "SEK"
+    if (/(?:^|[^A-Z])EUR(?=$|[^A-Z])|\u20AC/.test(s)) return "EUR"
+    if (/(?:^|[^A-Z])GBP(?=$|[^A-Z])|\u00A3/.test(s)) return "GBP"
+    if (/(?:^|[^A-Z])CHF(?=$|[^A-Z])/.test(s)) return "CHF"
+    if (/(?:^|[^A-Z])CAD(?=$|[^A-Z])|CA\$/.test(s)) return "CAD"
+    if (/(?:^|[^A-Z])AUD(?=$|[^A-Z])|AU\$|A\$/.test(s)) return "AUD"
+    if (/(?:^|[^A-Z])USD(?=$|[^A-Z])|US\$/.test(s)) return "USD"
+    if (/(?:^|[^A-Z])KR\.?(?=$|[^A-Z])/.test(s)) return localeCurrency || "DKK"
     if (/\$/.test(s)) return "USD"
     return ""
   }
@@ -47,22 +47,23 @@ export function extractProduct() {
   const offer = Array.isArray(product?.offers) ? product.offers[0] : product?.offers
   const structured = { value: offer?.price ?? offer?.priceSpecification?.price, currency: currencyIn(offer?.priceCurrency || offer?.priceSpecification?.priceCurrency), source: "structured" }
   const openGraph = { value: meta("product:price:amount"), currency: currencyIn(meta("product:price:currency")), source: "metadata" }
-  const priceSelector = '[itemprop="price"], [data-price], [data-price-amount], [data-product-price], [data-testid*="price"], [class*="price"], [class*="Price"], [class*="money-amount"], del, s, ins, del + *, s + *'
+  const priceSelector = '[itemprop="price"], [data-price], [data-price-amount], [data-product-price], [data-testid*="price"], [class*="price"], [class*="Price"], [class*="money-amount"], .a-price .a-offscreen, del, s, ins, del + *, s + *'
   const allPriceNodes = [...document.querySelectorAll(priceSelector)].slice(0, 400)
+  const nodePriceText = (el) => el.getAttribute("content") || el.getAttribute("data-price") || el.getAttribute("data-price-amount") || el.getAttribute("data-product-price") || el.querySelector(".a-offscreen")?.textContent || el.getAttribute("aria-label") || el.textContent
   const titleNode = document.querySelector("h1")
   let priceNodes = allPriceNodes
   // Keep prices in the same product-information region as the heading. This
   // prevents a cheaper recommendation card from becoming the product price.
   for (let parent = titleNode?.parentElement; parent && parent !== document.body; parent = parent.parentElement) {
     const nearby = allPriceNodes.filter((node) => parent.contains(node))
-    if (nearby.length && nearby.length <= 40) { priceNodes = nearby; break }
+    if (nearby.length && nearby.length <= 40 && nearby.some((node) => parsePrice(nodePriceText(node)) !== null)) { priceNodes = nearby; break }
   }
   const dom = priceNodes.map((el) => {
-    const value = el.getAttribute("content") || el.getAttribute("data-price") || el.getAttribute("data-price-amount") || el.getAttribute("data-product-price") || el.getAttribute("aria-label") || el.textContent
+    const value = nodePriceText(el)
     const nodes = [el, el.parentElement, el.parentElement?.parentElement].filter(Boolean)
     const context = nodes.map((node) => `${node.className || ""} ${node.id || ""} ${node.getAttribute("data-testid") || ""}`).join(" ")
     const old = !!el.closest("del, s") || /(?:old|original|compare|previous|regular|list|was|rrp)[-_ ]*(?:price|amount)|(?:price|amount)[-_ ]*(?:old|original|compare|previous|regular|list|rrp)|a-text-price|strikethrough|crossed/i.test(context)
-    const current = !!el.closest("ins") || !!el.previousElementSibling?.matches("del, s") || /(?:sale|current|special|now|final|discounted|reduced)[-_ ]*(?:price|amount)|(?:price|amount)[-_ ]*(?:sale|current|special|now|final|discounted|reduced)|price-item--sale/i.test(context)
+    const current = !!el.closest("ins") || !!el.previousElementSibling?.matches("del, s") || /(?:sale|current|special|now|final|discounted|reduced)[-_ ]*(?:price|amount)|(?:price|amount)[-_ ]*(?:sale|current|special|now|final|discounted|reduced)|price-item--sale|priceToPay/i.test(context)
     const matches = text(value).match(/(?:[\u20AC\u00A3$]\s*\d[\d.,]*|\d[\d.,\s]*\s*(?:DKK|NOK|SEK|EUR|GBP|USD|CHF|CAD|AUD|kr\.?|\u20AC|\u00A3|\$))/gi) || []
     return {
       value,

@@ -70,7 +70,7 @@ function render() {
 }
 
 function preview() {
-  return `<section class="preview glass"><span class="eyebrow">PRODUCT FOUND</span><div class="preview-row">${product.image ? `<img src="${safe(product.image)}" alt="" />` : ""}<div><span>${safe(product.siteName)}</span><strong>${safe(product.name)}</strong><b id="preview-price">${safe(priceText(product.price, product.currency))}</b></div></div><div class="preview-controls"><label>Save to list<select id="list-select">${store.lists.map((list) => `<option value="${safe(list.id)}">${safe(list.name)}</option>`).join("")}</select></label><label>Currency<select id="preview-currency">${currencyOptions(product.currency)}</select></label><label>Alert me on<select id="alert-type"><option value="any">Any drop</option><option value="percent">% drop</option><option value="fixed">Target price</option></select></label><label id="threshold-wrap" hidden>Threshold<input id="threshold" type="number" min="0.01" step="0.01" value="10" /></label></div><button id="save-item" class="primary">Start tracking</button></section>`
+  return `<section class="preview glass"><span class="eyebrow">${product.manual ? "ENTER PRODUCT PRICE" : "PRODUCT FOUND"}</span><div class="preview-row">${product.image ? `<img src="${safe(product.image)}" alt="" />` : ""}<div><span>${safe(product.siteName)}</span><strong>${safe(product.name)}</strong><b id="preview-price">${product.price > 0 ? safe(priceText(product.price, product.currency)) : "Enter a price below"}</b></div></div>${product.manual ? `<p class="manual-hint">This store's price could not be read automatically. Enter the current price to save it.</p>` : ""}<div class="preview-controls"><label class="wide-field">Product name<input id="preview-name" type="text" maxlength="180" value="${safe(product.name)}" /></label><label>Current price<input id="preview-price-input" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="179.00" value="${product.price > 0 ? safe(product.price) : ""}" /></label><label>Currency<select id="preview-currency">${currencyOptions(product.currency)}</select></label><label>Save to list<select id="list-select">${store.lists.map((list) => `<option value="${safe(list.id)}">${safe(list.name)}</option>`).join("")}</select></label><label>Alert me on<select id="alert-type"><option value="any">Any drop</option><option value="percent">% drop</option><option value="fixed">Target price</option></select></label><label id="threshold-wrap" hidden>Threshold<input id="threshold" type="number" min="0.01" step="0.01" value="10" /></label></div><button id="save-item" class="primary">Start tracking</button></section>`
 }
 
 function flash(message) { notice = message; render(); setTimeout(() => { if (notice === message) { notice = ""; render() } }, 4000) }
@@ -85,10 +85,16 @@ async function capture() {
   if (!(await permissionFor(currentTab.url))) return flash("Site access is needed for price checks.")
   try {
     const [result] = await chrome.scripting.executeScript({ target: { tabId: currentTab.id }, func: extractProduct })
-    if (result?.result?.error) return flash(result.result.error)
-    product = { ...result.result, url: currentTab.url }
+    if (result?.result && !result.result.error) product = { ...result.result, url: currentTab.url }
+    else product = manualProduct()
     render()
-  } catch { flash("This page cannot be read. Try a regular product page.") }
+  } catch { product = manualProduct(); render() }
+}
+
+function manualProduct() {
+  const url = new URL(currentTab.url)
+  const currency = url.hostname.endsWith(".dk") ? "DKK" : url.hostname.endsWith(".no") ? "NOK" : url.hostname.endsWith(".se") ? "SEK" : "USD"
+  return { url: currentTab.url, name: currentTab.title || url.hostname, image: "", price: null, currency, currencySource: "manual", siteName: url.hostname.replace(/^www\./, ""), manual: true }
 }
 
 async function refreshCurrentPage(silent = false) {
@@ -112,10 +118,14 @@ async function refreshCurrentPage(silent = false) {
 async function saveProduct() {
   if (!product) return
   if (store.items.some((item) => item.url === product.url)) return flash("This page is already tracked.")
+  const name = document.querySelector("#preview-name").value.trim()
+  const price = Number(document.querySelector("#preview-price-input").value)
+  if (!name) return flash("Enter a product name.")
+  if (!Number.isFinite(price) || price <= 0) return flash("Enter a valid current price.")
   const type = document.querySelector("#alert-type").value
   const value = Number(document.querySelector("#threshold").value)
   if (type !== "any" && !(value > 0)) return flash("Enter a threshold greater than zero.")
-  store.items.push({ ...product, id: crypto.randomUUID(), listId: document.querySelector("#list-select").value || DEFAULT_LIST_ID, currentPrice: product.price, originalPrice: Math.max(product.price, product.comparePrice || 0), alertType: type, alertValue: type === "any" ? 0 : value, createdAt: Date.now(), lastChecked: Date.now(), history: [{ price: product.price, at: Date.now() }] })
+  store.items.push({ ...product, name, price, id: crypto.randomUUID(), listId: document.querySelector("#list-select").value || DEFAULT_LIST_ID, currentPrice: price, originalPrice: Math.max(price, product.comparePrice || 0), alertType: type, alertValue: type === "any" ? 0 : value, createdAt: Date.now(), lastChecked: Date.now(), history: [{ price, at: Date.now() }] })
   await saveStore(store)
   product = null
   flash("Price tracking started.")
@@ -152,7 +162,7 @@ view.addEventListener("change", async (event) => {
   if (event.target.id === "alert-type") document.querySelector("#threshold-wrap").hidden = event.target.value === "any"
   if (event.target.id === "preview-currency" && product) {
     product.currency = event.target.value
-    document.querySelector("#preview-price").textContent = priceText(product.price, product.currency)
+    if (product.price > 0) document.querySelector("#preview-price").textContent = priceText(product.price, product.currency)
   }
   if (event.target.dataset.currencyId) {
     const item = store.items.find((entry) => entry.id === event.target.dataset.currencyId)
@@ -167,6 +177,12 @@ view.addEventListener("change", async (event) => {
       store = { lists: data.lists, items: data.items, settings: { notifications: data.settings?.notifications !== false } }
       await saveStore(store); flash("Data imported.")
     } catch { flash("Could not import this file.") }
+  }
+})
+view.addEventListener("input", (event) => {
+  if (event.target.id === "preview-price-input" && product) {
+    product.price = Number(event.target.value)
+    document.querySelector("#preview-price").textContent = product.price > 0 ? priceText(product.price, product.currency) : "Enter a price below"
   }
 })
 nav.addEventListener("click", (event) => {

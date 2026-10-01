@@ -38,6 +38,11 @@ const fixtures = [
     price: 39.99, comparePrice: 59.99, currency: "USD",
   },
   {
+    name: "Amazon split DKK price with duplicated accessible amount",
+    html: `<html lang="en-US"><body><main id="centerCol"><div id="title_feature_div"><h1>Philips Sonicare 5950</h1></div><div id="corePrice_feature_div"><span class="a-price priceToPay"><span class="a-offscreen">DKK427.37</span><span aria-hidden="true"><span class="a-price-symbol">DKK</span><span class="a-price-whole">427<span class="a-price-decimal">.</span></span><span class="a-price-fraction">37</span></span></span><span class="a-text-price"><span class="a-offscreen">DKK723.61</span></span></div></main></body></html>`,
+    price: 427.37, comparePrice: 723.61, currency: "DKK",
+  },
+  {
     name: "Magento special and old price",
     html: `<html lang="de-DE"><body><section class="product-info"><h1>Lamp</h1><span class="old-price"><span class="price">89,00 €</span></span><span class="special-price"><span class="price">59,00 €</span></span></section></body></html>`,
     price: 59, comparePrice: 89, currency: "EUR",
@@ -122,9 +127,9 @@ test("product price extraction across store markup", async (t) => {
           const result = JSON.parse(Buffer.from(encoded, "base64").toString("utf8"))
           if (fixture.error) assert.ok(result.error)
           else {
-            assert.equal(result.price, fixture.price)
-            assert.equal(result.comparePrice, fixture.comparePrice)
-            assert.equal(result.currency, fixture.currency)
+            assert.equal(result.price, fixture.price, JSON.stringify(result))
+            assert.equal(result.comparePrice, fixture.comparePrice, JSON.stringify(result))
+            assert.equal(result.currency, fixture.currency, JSON.stringify(result))
           }
         } finally { await rm(profile, { recursive: true, force: true }) }
       })

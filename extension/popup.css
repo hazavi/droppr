@@ -3,3 +3,4 @@
 .sparkline{width:58px;height:28px;align-self:end;margin:0 9px 4px auto;overflow:visible;flex:none}.sparkline polyline{fill:none;stroke:#6366f1;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .price-row{display:flex;align-items:center;gap:6px}.currency-edit{max-width:52px;border:0;border-radius:5px;background:#eef2ff;color:#6366f1;font-size:9px;font-weight:700;cursor:pointer;padding:2px;outline:none}
 .item-copy .check-error{display:block;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#c2410c}
+.preview-controls .wide-field{grid-column:1/-1}.manual-hint{font-size:11px;color:#64748b;line-height:1.5;margin:-2px 0 13px}
