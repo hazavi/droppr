@@ -4,6 +4,7 @@ import { readStore, saveStore, priceText, isDeal, dropPercent, applyPriceResult,
 const view = document.querySelector("#view")
 const nav = document.querySelector(".dock")
 const refresh = document.querySelector("#refresh")
+const removeDialog = document.querySelector("#remove-dialog")
 let store = await readStore()
 let page = "home"
 let selectedList = null
@@ -11,6 +12,7 @@ let product = null
 let currentTab = null
 let notice = ""
 let editingItemId = null
+let pendingRemoveId = null
 
 const safe = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char])
 const productUrl = (url) => { try { const parsed = new URL(url); return /^https?:$/.test(parsed.protocol) ? parsed : null } catch { return null } }
@@ -175,8 +177,13 @@ view.addEventListener("click", async (event) => {
   if (button.id === "back-lists") { selectedList = null; return render() }
   if (button.dataset.list) { selectedList = button.dataset.list; return render() }
   if (button.dataset.remove) {
-    store.items = store.items.filter((item) => item.id !== button.dataset.remove)
-    await saveStore(store); return flash("Item removed.")
+    const item = store.items.find((entry) => entry.id === button.dataset.remove)
+    if (!item) return
+    pendingRemoveId = item.id
+    document.querySelector("#remove-product-name").textContent = item.name
+    removeDialog.showModal()
+    document.querySelector("#cancel-remove").focus()
+    return
   }
   if (button.dataset.open) { event.preventDefault(); if (productUrl(button.dataset.open)) return chrome.tabs.create({ url: button.dataset.open }) }
   if (button.id === "check-now") return runCheck()
@@ -185,6 +192,16 @@ view.addEventListener("click", async (event) => {
     const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "droppr-data.json"; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 5000)
   }
 })
+document.querySelector("#cancel-remove").addEventListener("click", () => removeDialog.close())
+document.querySelector("#confirm-remove").addEventListener("click", async () => {
+  const id = pendingRemoveId
+  removeDialog.close()
+  if (!id) return
+  store.items = store.items.filter((item) => item.id !== id)
+  await saveStore(store)
+  flash("Item removed.")
+})
+removeDialog.addEventListener("close", () => { pendingRemoveId = null })
 view.addEventListener("submit", async (event) => {
   if (event.target.dataset.itemEditor) {
     event.preventDefault()

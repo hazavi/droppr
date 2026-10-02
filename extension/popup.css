@@ -111,6 +111,15 @@ h1, h2, p { margin: 0; }
 .toggle-row { display: flex; align-items: center; justify-content: space-between; color: #4e5d74; font-size: 11px; }
 .toggle-row input { accent-color: #6675d8; }
 .notice { margin-bottom: 12px; padding: 10px 12px; border: 1px solid #dbe0fc; border-radius: 10px; background: #f0f2ff; color: #4756ad; font-size: 11px; }
+.confirm-dialog { width: min(340px, calc(100% - 32px)); padding: 20px; border: 1px solid #e7ebf4; border-radius: 17px; background: #fff; color: #172033; box-shadow: 0 24px 60px #17213a38; }
+.confirm-dialog::backdrop { background: #17213a80; backdrop-filter: blur(3px); }
+.confirm-dialog h2 { font-size: 18px; font-weight: 750; letter-spacing: -.03em; }
+.confirm-dialog p { margin-top: 9px; color: #6a788e; font-size: 12px; line-height: 1.5; }
+.confirm-dialog .confirm-product { overflow: hidden; margin-top: 13px; padding: 10px 12px; border-radius: 9px; background: #f4f6fa; color: #33415e; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.confirm-actions { display: flex; gap: 8px; margin-top: 18px; }
+.confirm-actions button { flex: 1; margin: 0; }
+.danger { min-height: 34px; padding: 8px 11px; border: 0; border-radius: 9px; background: #b84554; color: #fff; font-size: 11px; font-weight: 700; }
+.danger:hover { background: #a33141; }
 
 /* Sliding selection adapted from 21st.dev/@micka_design/components/tabs-base. */
 .dock { position: fixed; z-index: 5; right: 17px; bottom: 12px; left: 17px; display: flex; gap: 3px; padding: 5px; border: 1px solid #e3e8f2; border-radius: 16px; background: #ffffffed; box-shadow: 0 10px 30px #1d2b491f; backdrop-filter: blur(20px); }
