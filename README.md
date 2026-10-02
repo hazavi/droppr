@@ -17,3 +17,7 @@ Open a product page and click the Droppr icon. Choose **Track this page**, revie
 Browser alarms run checks about every six hours while the browser is running. Checks briefly open each saved page in a background tab, read its price, then close it. Opening Droppr on a tracked product page also refreshes that item immediately. Sale pages record the reduced price and the crossed-out price when both are available. Desktop notifications fire when a price crosses the selected rule. Stores that require login, block page access, or hide prices from the page may not be readable. An unreadable price leaves the saved value intact and shows a check error on the item. Local browser storage is specific to that browser profile; export your data in Settings before switching profiles.
 
 This extension uses desktop alerts and runs without a web server or scheduled GitHub job.
+
+## Design references
+
+The popup adapts the [Segmented Tabs](https://21st.dev/@micka_design/components/tabs-base), [Origin UI Button](https://21st.dev/originui/button), and [Product Card](https://21st.dev/@beratberkayg/components/product-card-1) patterns from 21st.dev. Their navigation selection, button states, and product price presentation are implemented in the extension's plain HTML, CSS, and JavaScript.
