@@ -1,5 +1,6 @@
 import { extractProduct } from "./scrape.js"
 import { readStore, saveStore, priceText, isDeal, dropPercent, applyPriceResult, correctItem, DEFAULT_LIST_ID } from "./store.js"
+import { subscribeEmail, emailStatus } from "./email.js"
 
 const view = document.querySelector("#view")
 const nav = document.querySelector(".dock")
@@ -37,7 +38,7 @@ function itemCard(item) {
   const points = prices.map((price, index) => `${Math.round(index * 58 / Math.max(1, prices.length - 1))},${Math.round(24 - (price - low) * 19 / Math.max(0.01, high - low))}`).join(" ")
   return `<article class="item glass">
     <div class="item-image">${item.image ? `<img src="${safe(item.image)}" alt="" />` : "◈"}${isDeal(item) ? `<span class="deal-badge">−${dropPercent(item)}%</span>` : ""}</div>
-    <div class="item-copy"><span>${safe(item.siteName)}</span><a href="${safe(item.url)}" class="item-name" data-open="${safe(item.url)}">${safe(item.name)}</a><div class="price-row"><strong>${safe(priceText(item.currentPrice, item.currency))}</strong><select class="currency-edit" data-currency-id="${safe(item.id)}" aria-label="Currency for ${safe(item.name)}">${currencyOptions(item.currency)}</select><button class="edit-item" data-edit-item="${safe(item.id)}" title="Correct price or image" aria-label="Correct price or image for ${safe(item.name)}">✎</button></div><small class="price-note">${isDeal(item) ? `<s>${safe(priceText(item.originalPrice, item.currency))}</s><b>Price drop</b>` : safe(alertLabel(item))}</small>${item.lastError ? `<small class="check-error" title="${safe(item.lastError)}">Check failed: ${safe(item.lastError)}</small>` : ""}${editingItemId === item.id ? `<form class="item-editor" data-item-editor="${safe(item.id)}"><label>Current price<input name="currentPrice" type="number" min="0.01" step="0.01" value="${safe(item.currentPrice)}" required /></label><label>Regular price<input name="originalPrice" type="number" min="0.01" step="0.01" value="${safe(item.originalPrice)}" required /></label><label>Image URL<input name="image" type="url" value="${safe(item.image)}" placeholder="https://…" /></label><button type="submit" class="secondary">Save correction</button></form>` : ""}</div>
+    <div class="item-copy"><span>${safe(item.siteName)}</span><a href="${safe(item.url)}" class="item-name" data-open="${safe(item.url)}">${safe(item.name)}</a><div class="price-row"><strong>${safe(priceText(item.currentPrice, item.currency))}</strong><select class="currency-edit" data-currency-id="${safe(item.id)}" aria-label="Currency for ${safe(item.name)}">${currencyOptions(item.currency)}</select><button class="edit-item" data-edit-item="${safe(item.id)}" title="Correct price or image" aria-label="Correct price or image for ${safe(item.name)}">✎</button></div><small class="price-note">${isDeal(item) ? `<s>${safe(priceText(item.originalPrice, item.currency))}</s><b>Price drop</b>` : safe(alertLabel(item))}</small>${item.lastError ? `<small class="check-error" title="${safe(item.lastError)}">Check failed: ${safe(item.lastError)}</small>` : ""}${item.emailError ? `<small class="check-error">Email failed: ${safe(item.emailError)}</small>` : ""}${editingItemId === item.id ? `<form class="item-editor" data-item-editor="${safe(item.id)}"><label>Current price<input name="currentPrice" type="number" min="0.01" step="0.01" value="${safe(item.currentPrice)}" required /></label><label>Regular price<input name="originalPrice" type="number" min="0.01" step="0.01" value="${safe(item.originalPrice)}" required /></label><label>Image URL<input name="image" type="url" value="${safe(item.image)}" placeholder="https://…" /></label><button type="submit" class="secondary">Save correction</button></form>` : ""}</div>
     ${prices.length > 1 ? `<svg class="sparkline" viewBox="0 0 58 28" aria-label="Price history"><polyline points="${points}" /></svg>` : ""}
     <button class="item-remove" data-remove="${safe(item.id)}" aria-label="Remove ${safe(item.name)}">×</button>
   </article>`
@@ -70,6 +71,7 @@ function render() {
     view.innerHTML = `${toast}${heading("Settings", "Choose how Droppr works")}
       <section class="settings-card glass"><h2>Price checks</h2><p>Droppr checks saved pages every six hours while your browser is open. You can also check now.</p><button id="check-now" class="secondary">Check prices now</button></section>
       <section class="settings-card glass"><h2>Notifications</h2><label class="toggle-row"><span>Desktop price drop alerts</span><input id="notifications" type="checkbox" ${store.settings.notifications ? "checked" : ""} /></label></section>
+      <form id="email-settings" class="settings-card glass"><h2>Email alerts</h2><p>Get an email when a product meets its price drop rule.</p><label class="email-field">Email address<input name="emailAddress" type="email" autocomplete="email" placeholder="you@example.com" value="${safe(store.settings.emailAddress)}" /></label><label class="toggle-row email-toggle"><span>Send email price drop alerts</span><input name="emailEnabled" type="checkbox" ${store.settings.emailEnabled ? "checked" : ""} /></label><div class="email-actions"><button class="secondary" type="submit">Save email settings</button>${store.settings.emailToken ? `<button id="check-email-status" class="secondary" type="button">Check verification</button>` : ""}</div><small class="email-status">${!store.settings.emailEndpoint ? "Email delivery is not connected yet." : store.settings.emailVerified ? "Email confirmed and ready." : store.settings.emailToken ? "Check your inbox and confirm your email." : "We will send you a confirmation link."}</small></form>
       <section class="settings-card glass"><h2>Your data</h2><p>Watchlists and price history stay in this browser profile.</p><button id="export" class="secondary">Export data</button><label class="secondary import-label">Import data<input id="import" type="file" accept="application/json" hidden /></label></section>`
   }
 }
@@ -141,6 +143,7 @@ async function refreshCurrentPage(silent = false) {
     const applied = applyPriceResult(item, result)
     if (!applied.ok) { item.lastError = applied.reason; await saveStore(store); if (!silent) flash(applied.reason); return }
     await saveStore(store)
+    if (applied.alert) void chrome.runtime.sendMessage({ type: "PRICE_DROP", itemId: item.id }).catch((error) => console.warn("Droppr alert failed:", error))
     if (applied.changed || applied.dealChanged) flash(`Price updated to ${priceText(item.currentPrice, item.currency)}.`)
     else if (!silent) flash("Price is up to date.")
     else render()
@@ -189,8 +192,23 @@ view.addEventListener("click", async (event) => {
   }
   if (button.dataset.open) { event.preventDefault(); if (productUrl(button.dataset.open)) return chrome.tabs.create({ url: button.dataset.open }) }
   if (button.id === "check-now") return runCheck()
+  if (button.id === "check-email-status") {
+    try {
+      store.settings.emailVerified = await emailStatus(store.settings)
+      await saveStore(store)
+      return flash(store.settings.emailVerified ? "Email confirmed." : "Email is not confirmed yet. Check your inbox.")
+    } catch (error) {
+      if (/401/.test(error.message)) {
+        store.settings.emailToken = ""
+        store.settings.emailVerified = false
+        await saveStore(store)
+        return flash("Email confirmation expired. Save again for a new link.")
+      }
+      return flash("Could not check email verification.")
+    }
+  }
   if (button.id === "export") {
-    const blob = new Blob([JSON.stringify(store, null, 2)], { type: "application/json" })
+    const blob = new Blob([JSON.stringify({ ...store, settings: { ...store.settings, emailToken: "" } }, null, 2)], { type: "application/json" })
     const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "droppr-data.json"; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 5000)
   }
 })
@@ -205,6 +223,32 @@ document.querySelector("#confirm-remove").addEventListener("click", async () => 
 })
 removeDialog.addEventListener("close", () => { pendingRemoveId = null })
 view.addEventListener("submit", async (event) => {
+  if (event.target.id === "email-settings") {
+    event.preventDefault()
+    const form = event.target
+    const emailAddress = form.elements.emailAddress.value.trim()
+    const emailEnabled = form.elements.emailEnabled.checked
+    if (emailAddress && !form.elements.emailAddress.validity.valid) return flash("Enter a valid email address.")
+    if (emailEnabled && !emailAddress) return flash("Enter your email address.")
+    if (emailEnabled && !store.settings.emailEndpoint) return flash("Email delivery is not connected yet.")
+    if (emailEnabled) {
+      let origin
+      try { const url = new URL(store.settings.emailEndpoint); if (url.protocol !== "https:") throw new Error(); origin = url.origin }
+      catch { return flash("Email service URL is invalid.") }
+      if (!(await chrome.permissions.request({ origins: [origin + "/*"] }))) return flash("Email service access is needed for alerts.")
+    }
+    let emailToken = store.settings.emailToken
+    let emailVerified = store.settings.emailVerified
+    const addressChanged = emailAddress !== store.settings.emailAddress
+    if (emailEnabled && (addressChanged || !emailToken)) {
+      try { emailToken = await subscribeEmail(emailAddress, store.settings); emailVerified = false }
+      catch (error) { return flash(error.message) }
+    }
+    store.settings = { ...store.settings, emailAddress, emailToken, emailVerified, emailEnabled }
+    if (!emailEnabled || addressChanged) for (const item of store.items) { delete item.pendingEmail; delete item.emailError }
+    await saveStore(store)
+    return flash(emailEnabled ? emailVerified ? "Email alerts enabled." : "Check your inbox to confirm your email." : "Email settings saved.")
+  }
   if (event.target.dataset.itemEditor) {
     event.preventDefault()
     const item = store.items.find((entry) => entry.id === event.target.dataset.itemEditor)
@@ -243,7 +287,7 @@ view.addEventListener("change", async (event) => {
       const data = JSON.parse(await event.target.files[0].text())
       if (!Array.isArray(data.lists) || !Array.isArray(data.items)) throw new Error()
       if (data.lists.some((list) => typeof list.id !== "string" || typeof list.name !== "string") || data.items.some((item) => !productUrl(item.url) || typeof item.id !== "string" || typeof item.name !== "string" || !Number.isFinite(item.currentPrice) || !Number.isFinite(item.originalPrice))) throw new Error()
-      store = { lists: data.lists, items: data.items, settings: { notifications: data.settings?.notifications !== false } }
+      store = { lists: data.lists, items: data.items, settings: { notifications: data.settings?.notifications !== false, emailEnabled: false, emailAddress: data.settings?.emailAddress || "", emailEndpoint: store.settings.emailEndpoint, emailToken: "", emailVerified: false } }
       await saveStore(store); flash("Data imported.")
     } catch { flash("Could not import this file.") }
   }

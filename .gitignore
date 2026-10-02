@@ -3,3 +3,6 @@
 .DS_Store
 *.log
 .env.local
+/relay/.dev.vars*
+/relay/.env*
+/relay/.wrangler/

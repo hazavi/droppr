@@ -1,11 +1,14 @@
 export const DEFAULT_LIST_ID = "watchlist"
+import { EMAIL_RELAY_URL } from "./email-config.js"
 
 export async function readStore() {
   const { lists, items, settings } = await chrome.storage.local.get(["lists", "items", "settings"])
+  const savedSettings = settings || {}
+  const emailToken = typeof savedSettings.emailVerified === "boolean" ? savedSettings.emailToken || "" : ""
   return {
     lists: Array.isArray(lists) && lists.length ? lists : [{ id: DEFAULT_LIST_ID, name: "My watchlist", createdAt: Date.now() }],
     items: Array.isArray(items) ? items : [],
-    settings: { notifications: true, ...(settings || {}) },
+    settings: { notifications: true, emailEnabled: false, emailAddress: "", ...savedSettings, emailEndpoint: EMAIL_RELAY_URL || savedSettings.emailEndpoint || "", emailToken, emailVerified: emailToken ? savedSettings.emailVerified === true : false },
   }
 }
 

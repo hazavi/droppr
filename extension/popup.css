@@ -110,6 +110,13 @@ h1, h2, p { margin: 0; }
 .secondary { display: inline-block; min-height: 34px; margin-right: 6px; padding: 8px 11px; border: 1px solid #dce3ee; border-radius: 9px; background: #fff; color: #33415e; font-size: 11px; font-weight: 650; }
 .toggle-row { display: flex; align-items: center; justify-content: space-between; color: #4e5d74; font-size: 11px; }
 .toggle-row input { accent-color: #6675d8; }
+.email-field { display: flex; flex-direction: column; gap: 5px; margin: 10px 0; color: #6a788e; font-size: 10px; font-weight: 600; }
+.email-field input { width: 100%; height: 37px; padding: 8px 10px; border: 1px solid #dce3ee; border-radius: 9px; background: #fff; color: #283550; font-size: 11px; }
+.email-field input:focus { outline: 0; border-color: #8796ea; box-shadow: 0 0 0 3px #8796ea22; }
+.email-toggle { padding: 9px 0 14px; border-top: 1px solid #edf0f5; }
+.email-actions { display: flex; gap: 8px; }
+.email-actions button { margin: 0; }
+.email-status { display: block; margin-top: 10px; color: #96a1b1; font-size: 10px; line-height: 1.5; }
 .notice { margin-bottom: 12px; padding: 10px 12px; border: 1px solid #dbe0fc; border-radius: 10px; background: #f0f2ff; color: #4756ad; font-size: 11px; }
 .confirm-dialog { width: min(340px, calc(100% - 32px)); padding: 20px; border: 1px solid #e7ebf4; border-radius: 17px; background: #fff; color: #172033; box-shadow: 0 24px 60px #17213a38; }
 .confirm-dialog::backdrop { background: #17213a80; backdrop-filter: blur(3px); }

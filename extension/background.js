@@ -1,5 +1,6 @@
 import { extractProduct } from "./scrape.js"
 import { readStore, saveStore, priceText, applyPriceResult } from "./store.js"
+import { emailSettingsReady, emailStatus, sendEmailAlert } from "./email.js"
 
 const ALARM = "droppr-price-check"
 
@@ -39,6 +40,45 @@ async function readInTab(url) {
 }
 
 let checking = false
+async function deliverPriceAlert(itemId, newDrop) {
+  const store = await readStore()
+  const item = store.items.find((entry) => entry.id === itemId)
+  if (!item) return
+  if (newDrop) {
+    if (store.settings.notifications) {
+      await chrome.notifications.create(`droppr-${item.id}-${Date.now()}`, {
+        type: "basic", iconUrl: "icons/droppr.png", title: "Price dropped on Droppr",
+        message: `${item.name} is now ${priceText(item.currentPrice, item.currency)}`,
+      }).catch((error) => console.warn("Droppr desktop alert failed:", error))
+    }
+    if (emailSettingsReady(store.settings)) {
+      item.pendingEmail = { price: item.currentPrice, at: Date.now() }
+      await saveStore(store)
+    }
+  }
+  if (!item.pendingEmail || !emailSettingsReady(store.settings)) return
+  try {
+    if (!store.settings.emailVerified) {
+      if (!(await emailStatus(store.settings))) return
+      store.settings.emailVerified = true
+      await saveStore(store)
+    }
+    await sendEmailAlert({ ...item, currentPrice: item.pendingEmail.price }, store.settings)
+    const latest = await readStore()
+    const saved = latest.items.find((entry) => entry.id === itemId)
+    if (saved?.pendingEmail?.at === item.pendingEmail.at) {
+      delete saved.pendingEmail
+      delete saved.emailError
+      await saveStore(latest)
+    }
+  } catch (error) {
+    console.warn("Droppr email alert failed:", error)
+    const latest = await readStore()
+    const saved = latest.items.find((entry) => entry.id === itemId)
+    if (saved) { saved.emailError = error instanceof Error ? error.message : "Email delivery failed"; await saveStore(latest) }
+  }
+}
+
 async function checkPrices() {
   if (checking) return { busy: true, checked: 0, updated: 0, failed: 0 }
   checking = true
@@ -62,12 +102,7 @@ async function checkPrices() {
         await saveStore(store)
         summary.checked++
         if (applied.changed) summary.updated++
-        if (store.settings.notifications && applied.alert) {
-          await chrome.notifications.create(`droppr-${current.id}-${Date.now()}`, {
-            type: "basic", iconUrl: "icons/droppr.png", title: "Price dropped on Droppr",
-            message: `${current.name} is now ${priceText(current.currentPrice, current.currency)}`,
-          })
-        }
+        await deliverPriceAlert(current.id, applied.alert)
       } catch (error) {
         failure = error instanceof Error ? error.message : "Could not load product page"
         console.warn("Droppr check failed:", item.url, error)
@@ -86,6 +121,10 @@ async function checkPrices() {
 
 chrome.alarms.onAlarm.addListener((alarm) => { if (alarm.name === ALARM) void checkPrices() })
 chrome.runtime.onMessage.addListener((message, _sender, respond) => {
+  if (message?.type === "PRICE_DROP") {
+    deliverPriceAlert(message.itemId, true).then(() => respond({ ok: true })).catch((error) => respond({ error: error.message }))
+    return true
+  }
   if (message?.type === "CHECK_PRICES") {
     checkPrices().then(respond).catch((error) => respond({ error: error.message }))
     return true

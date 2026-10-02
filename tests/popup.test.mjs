@@ -20,7 +20,8 @@ test("an unreadable store page can be tracked and removal requires confirmation"
   assert.ok(chrome, "Chrome or Edge is required; set CHROME_PATH if installed elsewhere")
   const root = join(process.cwd(), "extension")
   const mock = `<script>
-    window.__store = {};
+    window.__store = { settings: { emailEndpoint: "https://relay.example.com" } };
+    window.fetch = async (url) => ({ ok: true, json: async () => url.endsWith("/status") ? { verified: true } : { token: "${"a".repeat(72)}" } });
     window.chrome = {
       storage: { local: { get: async () => window.__store, set: async (value) => Object.assign(window.__store, value) }, onChanged: { addListener() {} } },
       tabs: { query: async () => [{ id: 1, url: "https://www.amazon.com/dp/EXAMPLE", title: "Toothbrush" }], create: async () => {} },
@@ -53,7 +54,18 @@ test("an unreadable store page can be tracked and removal requires confirmation"
         document.querySelector("[data-remove]").click();
         document.querySelector("#confirm-remove").click();
         await waitFor(() => window.__store.items.length === 0);
-        document.querySelector("#droppr-result").textContent = btoa(JSON.stringify({ price: item.currentPrice, regularPrice: item.originalPrice, currency: item.currency, name: item.name, image: item.image, dialogOpened, stillTrackedBeforeConfirmation, cancelKeptProduct, confirmRemovedProduct: !document.querySelector("#remove-dialog").open && window.__store.items.length === 0 }));
+        const confirmRemovedProduct = !document.querySelector("#remove-dialog").open && window.__store.items.length === 0;
+        document.querySelector('[data-view="settings"]').click();
+        await waitFor(() => document.querySelector("#email-settings"));
+        const form = document.querySelector("#email-settings");
+        form.elements.emailAddress.value = "me@example.com";
+        form.elements.emailEnabled.checked = true;
+        form.requestSubmit();
+        await waitFor(() => window.__store.settings?.emailEnabled);
+        await waitFor(() => document.querySelector("#check-email-status"));
+        document.querySelector("#check-email-status").click();
+        await waitFor(() => window.__store.settings?.emailVerified);
+        document.querySelector("#droppr-result").textContent = btoa(JSON.stringify({ price: item.currentPrice, regularPrice: item.originalPrice, currency: item.currency, name: item.name, image: item.image, dialogOpened, stillTrackedBeforeConfirmation, cancelKeptProduct, confirmRemovedProduct, emailSettings: window.__store.settings }));
       } catch (error) { document.querySelector("#droppr-result").textContent = btoa(JSON.stringify({ error: error.message })); }
     }, 50);
   </script>`
@@ -81,7 +93,7 @@ test("an unreadable store page can be tracked and removal requires confirmation"
     })
     const encoded = output.match(/<pre id="droppr-result">([^<]+)<\/pre>/)?.[1]
     assert.ok(encoded, `Popup did not return a result: ${output.slice(0, 3000)}`)
-    assert.deepEqual(JSON.parse(Buffer.from(encoded, "base64").toString("utf8")), { price: 427.37, regularPrice: 723.61, currency: "DKK", name: "Toothbrush", image: `http://127.0.0.1:${server.address().port}/icons/droppr-16.png` })
+    assert.deepEqual(JSON.parse(Buffer.from(encoded, "base64").toString("utf8")), { price: 427.37, regularPrice: 723.61, currency: "DKK", name: "Toothbrush", image: `http://127.0.0.1:${server.address().port}/icons/droppr-16.png`, dialogOpened: true, stillTrackedBeforeConfirmation: true, cancelKeptProduct: true, confirmRemovedProduct: true, emailSettings: { notifications: true, emailEnabled: true, emailAddress: "me@example.com", emailEndpoint: "https://relay.example.com", emailToken: "a".repeat(72), emailVerified: true } })
   } finally {
     server.close()
     await rm(profile, { recursive: true, force: true })

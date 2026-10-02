@@ -1,0 +1,6 @@
+{
+  "name": "droppr-email-relay",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-10-02",
+  "kv_namespaces": [{ "binding": "SUBSCRIBERS" }]
+}
