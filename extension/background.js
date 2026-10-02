@@ -29,8 +29,8 @@ async function readInTab(url) {
     for (let attempt = 0; attempt < 3; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, 1800))
       const [result] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: extractProduct })
-      if (result?.result && !result.result.error) latest = result.result
-      if (latest?.comparePrice > latest?.price) break
+      if (result?.result && !result.result.error && (!latest || result.result.image || !latest.image)) latest = result.result
+      if (latest?.comparePrice > latest?.price && latest.image) break
     }
     return latest
   } finally {

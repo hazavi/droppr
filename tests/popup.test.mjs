@@ -38,12 +38,14 @@ test("an unreadable store page can be tracked with a manually entered price", as
         await waitFor(() => document.querySelector("#preview-price-input"));
         document.querySelector("#preview-price-input").value = "427.37";
         document.querySelector("#preview-price-input").dispatchEvent(new Event("input", { bubbles: true }));
+        document.querySelector("#preview-regular-price").value = "723.61";
+        document.querySelector("#preview-image").value = "https://images.example.com/toothbrush.jpg";
         document.querySelector("#preview-currency").value = "DKK";
         document.querySelector("#preview-currency").dispatchEvent(new Event("change", { bubbles: true }));
         document.querySelector("#save-item").click();
         await waitFor(() => window.__store.items?.length === 1);
         const item = window.__store.items[0];
-        document.querySelector("#droppr-result").textContent = btoa(JSON.stringify({ price: item.currentPrice, currency: item.currency, name: item.name }));
+        document.querySelector("#droppr-result").textContent = btoa(JSON.stringify({ price: item.currentPrice, regularPrice: item.originalPrice, currency: item.currency, name: item.name, image: item.image }));
       } catch (error) { document.querySelector("#droppr-result").textContent = btoa(JSON.stringify({ error: error.message })); }
     }, 50);
   </script>`
@@ -71,7 +73,7 @@ test("an unreadable store page can be tracked with a manually entered price", as
     })
     const encoded = output.match(/<pre id="droppr-result">([^<]+)<\/pre>/)?.[1]
     assert.ok(encoded, `Popup did not return a result: ${output.slice(-500)}`)
-    assert.deepEqual(JSON.parse(Buffer.from(encoded, "base64").toString("utf8")), { price: 427.37, currency: "DKK", name: "Toothbrush" })
+    assert.deepEqual(JSON.parse(Buffer.from(encoded, "base64").toString("utf8")), { price: 427.37, regularPrice: 723.61, currency: "DKK", name: "Toothbrush", image: "https://images.example.com/toothbrush.jpg" })
   } finally {
     server.close()
     await rm(profile, { recursive: true, force: true })

@@ -41,10 +41,23 @@ export function applyPriceResult(item, result, checkedAt = Date.now()) {
   const previousPrice = item.currentPrice
   const previousOriginal = item.originalPrice
   item.currentPrice = result.price
+  if (result.image) item.image = result.image
   if (Number.isFinite(result.comparePrice) && result.comparePrice > item.originalPrice) item.originalPrice = result.comparePrice
   item.lastChecked = checkedAt
   item.lastError = ""
   const changed = Math.abs(previousPrice - item.currentPrice) > 0.001
   if (changed) item.history = [...(item.history || []), { price: item.currentPrice, at: checkedAt }].slice(-30)
   return { ok: true, changed, dealChanged: previousOriginal !== item.originalPrice, alert: shouldAlert(item, previousPrice) }
+}
+
+export function correctItem(item, { currentPrice, originalPrice, image }, correctedAt = Date.now()) {
+  if (!Number.isFinite(currentPrice) || currentPrice <= 0 || !Number.isFinite(originalPrice) || originalPrice < currentPrice) {
+    throw new Error("Enter valid current and regular prices")
+  }
+  item.currentPrice = currentPrice
+  item.originalPrice = originalPrice
+  item.image = image || ""
+  item.history = [{ price: currentPrice, at: correctedAt }]
+  item.lastChecked = correctedAt
+  item.lastError = ""
 }

@@ -4,3 +4,4 @@
 .price-row{display:flex;align-items:center;gap:6px}.currency-edit{max-width:52px;border:0;border-radius:5px;background:#eef2ff;color:#6366f1;font-size:9px;font-weight:700;cursor:pointer;padding:2px;outline:none}
 .item-copy .check-error{display:block;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#c2410c}
 .preview-controls .wide-field{grid-column:1/-1}.manual-hint{font-size:11px;color:#64748b;line-height:1.5;margin:-2px 0 13px}
+.edit-item{border:0;background:none;color:#94a3b8;font-size:13px;padding:0 2px}.edit-item:hover{color:#4f46e5}.item-editor{display:grid;gap:6px;margin-top:7px}.item-editor label{display:grid;gap:3px;color:#64748b;font-size:10px}.item-editor input{width:100%;border:1px solid #dce3ed;border-radius:7px;padding:6px;font-size:11px;color:#334155}.item-editor .secondary{margin:2px 0 0;width:max-content}
