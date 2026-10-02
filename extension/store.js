@@ -32,6 +32,7 @@ export function shouldAlert(item, oldPrice) {
 }
 
 export function applyPriceResult(item, result, checkedAt = Date.now()) {
+  if (result?.image) item.image = result.image
   if (!result || result.error || !Number.isFinite(result.price) || result.price <= 0) {
     return { ok: false, reason: result?.error || "Price not found on the product page" }
   }
@@ -41,7 +42,6 @@ export function applyPriceResult(item, result, checkedAt = Date.now()) {
   const previousPrice = item.currentPrice
   const previousOriginal = item.originalPrice
   item.currentPrice = result.price
-  if (result.image) item.image = result.image
   if (Number.isFinite(result.comparePrice) && result.comparePrice > item.originalPrice) item.originalPrice = result.comparePrice
   item.lastChecked = checkedAt
   item.lastError = ""

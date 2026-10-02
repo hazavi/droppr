@@ -37,9 +37,10 @@ test("a currency mismatch does not replace the saved numeric price", () => {
 
 test("an unreadable page leaves the last good price intact", () => {
   const saved = item()
-  const result = applyPriceResult(saved, { error: "Price not found" })
+  const result = applyPriceResult(saved, { error: "Price not found", image: "https://images.example.com/product.jpg" })
   assert.equal(result.ok, false)
   assert.equal(saved.currentPrice, 100)
+  assert.equal(saved.image, "https://images.example.com/product.jpg")
 })
 
 test("a later successful check fills a missing product image", () => {

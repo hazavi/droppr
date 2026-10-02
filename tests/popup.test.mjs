@@ -25,7 +25,7 @@ test("an unreadable store page can be tracked with a manually entered price", as
       storage: { local: { get: async () => window.__store, set: async (value) => Object.assign(window.__store, value) }, onChanged: { addListener() {} } },
       tabs: { query: async () => [{ id: 1, url: "https://www.amazon.com/dp/EXAMPLE", title: "Toothbrush" }], create: async () => {} },
       permissions: { request: async () => true },
-      scripting: { executeScript: async () => [{ result: { error: "No product price found" } }] },
+      scripting: { executeScript: async () => [{ result: { error: "No product price found", image: location.origin + "/icons/droppr-16.png" } }] },
       runtime: { sendMessage: async () => ({ checked: 0, updated: 0, failed: 0 }) }
     };
   </script>`
@@ -39,7 +39,6 @@ test("an unreadable store page can be tracked with a manually entered price", as
         document.querySelector("#preview-price-input").value = "427.37";
         document.querySelector("#preview-price-input").dispatchEvent(new Event("input", { bubbles: true }));
         document.querySelector("#preview-regular-price").value = "723.61";
-        document.querySelector("#preview-image").value = "https://images.example.com/toothbrush.jpg";
         document.querySelector("#preview-currency").value = "DKK";
         document.querySelector("#preview-currency").dispatchEvent(new Event("change", { bubbles: true }));
         document.querySelector("#save-item").click();
@@ -72,8 +71,8 @@ test("an unreadable store page can be tracked with a manually entered price", as
       child.on("close", () => { clearTimeout(timeout); resolve(htmlOutput) })
     })
     const encoded = output.match(/<pre id="droppr-result">([^<]+)<\/pre>/)?.[1]
-    assert.ok(encoded, `Popup did not return a result: ${output.slice(-500)}`)
-    assert.deepEqual(JSON.parse(Buffer.from(encoded, "base64").toString("utf8")), { price: 427.37, regularPrice: 723.61, currency: "DKK", name: "Toothbrush", image: "https://images.example.com/toothbrush.jpg" })
+    assert.ok(encoded, `Popup did not return a result: ${output.slice(0, 3000)}`)
+    assert.deepEqual(JSON.parse(Buffer.from(encoded, "base64").toString("utf8")), { price: 427.37, regularPrice: 723.61, currency: "DKK", name: "Toothbrush", image: `http://127.0.0.1:${server.address().port}/icons/droppr-16.png` })
   } finally {
     server.close()
     await rm(profile, { recursive: true, force: true })
