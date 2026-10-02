@@ -16,7 +16,7 @@ const chrome = [
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
 ].find((path) => path && existsSync(path))
 
-test("an unreadable store page can be tracked with a manually entered price", async () => {
+test("an unreadable store page can be tracked and removal requires confirmation", async () => {
   assert.ok(chrome, "Chrome or Edge is required; set CHROME_PATH if installed elsewhere")
   const root = join(process.cwd(), "extension")
   const mock = `<script>
@@ -44,7 +44,16 @@ test("an unreadable store page can be tracked with a manually entered price", as
         document.querySelector("#save-item").click();
         await waitFor(() => window.__store.items?.length === 1);
         const item = window.__store.items[0];
-        document.querySelector("#droppr-result").textContent = btoa(JSON.stringify({ price: item.currentPrice, regularPrice: item.originalPrice, currency: item.currency, name: item.name, image: item.image }));
+        await waitFor(() => document.querySelector("[data-remove]"));
+        document.querySelector("[data-remove]").click();
+        const dialogOpened = document.querySelector("#remove-dialog").open && document.querySelector("#remove-product-name").textContent === item.name;
+        const stillTrackedBeforeConfirmation = window.__store.items.length === 1;
+        document.querySelector("#cancel-remove").click();
+        const cancelKeptProduct = !document.querySelector("#remove-dialog").open && window.__store.items.length === 1;
+        document.querySelector("[data-remove]").click();
+        document.querySelector("#confirm-remove").click();
+        await waitFor(() => window.__store.items.length === 0);
+        document.querySelector("#droppr-result").textContent = btoa(JSON.stringify({ price: item.currentPrice, regularPrice: item.originalPrice, currency: item.currency, name: item.name, image: item.image, dialogOpened, stillTrackedBeforeConfirmation, cancelKeptProduct, confirmRemovedProduct: !document.querySelector("#remove-dialog").open && window.__store.items.length === 0 }));
       } catch (error) { document.querySelector("#droppr-result").textContent = btoa(JSON.stringify({ error: error.message })); }
     }, 50);
   </script>`

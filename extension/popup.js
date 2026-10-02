@@ -4,6 +4,7 @@ import { readStore, saveStore, priceText, isDeal, dropPercent, applyPriceResult,
 const view = document.querySelector("#view")
 const nav = document.querySelector(".dock")
 const refresh = document.querySelector("#refresh")
+const removeDialog = document.querySelector("#remove-dialog")
 let store = await readStore()
 let page = "home"
 let selectedList = null
@@ -11,6 +12,7 @@ let product = null
 let currentTab = null
 let notice = ""
 let editingItemId = null
+let pendingRemoveId = null
 
 const safe = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char])
 const productUrl = (url) => { try { const parsed = new URL(url); return /^https?:$/.test(parsed.protocol) ? parsed : null } catch { return null } }
@@ -34,8 +36,8 @@ function itemCard(item) {
   const low = Math.min(...prices), high = Math.max(...prices)
   const points = prices.map((price, index) => `${Math.round(index * 58 / Math.max(1, prices.length - 1))},${Math.round(24 - (price - low) * 19 / Math.max(0.01, high - low))}`).join(" ")
   return `<article class="item glass">
-    <div class="item-image">${item.image ? `<img src="${safe(item.image)}" alt="" />` : "◈"}</div>
-    <div class="item-copy"><span>${safe(item.siteName)}</span><a href="${safe(item.url)}" class="item-name" data-open="${safe(item.url)}">${safe(item.name)}</a><div class="price-row"><strong>${safe(priceText(item.currentPrice, item.currency))}</strong><select class="currency-edit" data-currency-id="${safe(item.id)}" aria-label="Currency for ${safe(item.name)}">${currencyOptions(item.currency)}</select><button class="edit-item" data-edit-item="${safe(item.id)}" title="Correct price or image" aria-label="Correct price or image for ${safe(item.name)}">✎</button></div><small>${isDeal(item) ? `<b>↓ ${dropPercent(item)}% from saved price</b>` : safe(alertLabel(item))}</small>${item.lastError ? `<small class="check-error" title="${safe(item.lastError)}">Check failed: ${safe(item.lastError)}</small>` : ""}${editingItemId === item.id ? `<form class="item-editor" data-item-editor="${safe(item.id)}"><label>Current price<input name="currentPrice" type="number" min="0.01" step="0.01" value="${safe(item.currentPrice)}" required /></label><label>Regular price<input name="originalPrice" type="number" min="0.01" step="0.01" value="${safe(item.originalPrice)}" required /></label><label>Image URL<input name="image" type="url" value="${safe(item.image)}" placeholder="https://…" /></label><button type="submit" class="secondary">Save correction</button></form>` : ""}</div>
+    <div class="item-image">${item.image ? `<img src="${safe(item.image)}" alt="" />` : "◈"}${isDeal(item) ? `<span class="deal-badge">−${dropPercent(item)}%</span>` : ""}</div>
+    <div class="item-copy"><span>${safe(item.siteName)}</span><a href="${safe(item.url)}" class="item-name" data-open="${safe(item.url)}">${safe(item.name)}</a><div class="price-row"><strong>${safe(priceText(item.currentPrice, item.currency))}</strong><select class="currency-edit" data-currency-id="${safe(item.id)}" aria-label="Currency for ${safe(item.name)}">${currencyOptions(item.currency)}</select><button class="edit-item" data-edit-item="${safe(item.id)}" title="Correct price or image" aria-label="Correct price or image for ${safe(item.name)}">✎</button></div><small class="price-note">${isDeal(item) ? `<s>${safe(priceText(item.originalPrice, item.currency))}</s><b>Price drop</b>` : safe(alertLabel(item))}</small>${item.lastError ? `<small class="check-error" title="${safe(item.lastError)}">Check failed: ${safe(item.lastError)}</small>` : ""}${editingItemId === item.id ? `<form class="item-editor" data-item-editor="${safe(item.id)}"><label>Current price<input name="currentPrice" type="number" min="0.01" step="0.01" value="${safe(item.currentPrice)}" required /></label><label>Regular price<input name="originalPrice" type="number" min="0.01" step="0.01" value="${safe(item.originalPrice)}" required /></label><label>Image URL<input name="image" type="url" value="${safe(item.image)}" placeholder="https://…" /></label><button type="submit" class="secondary">Save correction</button></form>` : ""}</div>
     ${prices.length > 1 ? `<svg class="sparkline" viewBox="0 0 58 28" aria-label="Price history"><polyline points="${points}" /></svg>` : ""}
     <button class="item-remove" data-remove="${safe(item.id)}" aria-label="Remove ${safe(item.name)}">×</button>
   </article>`
@@ -45,6 +47,9 @@ function heading(title, sub) { return `<div class="section-title"><div><h1>${tit
 function empty(icon, title, text) { return `<div class="empty glass"><div class="empty-icon">${icon}</div><h2>${title}</h2><p>${text}</p></div>` }
 function render() {
   nav.querySelectorAll("button").forEach((button) => button.classList.toggle("active", button.dataset.view === page))
+  const activeIndex = [...nav.querySelectorAll("button")].findIndex((button) => button.dataset.view === page)
+  nav.style.setProperty("--active-offset", `${activeIndex * 100}%`)
+  nav.style.setProperty("--active-gap", `${activeIndex * 3}px`)
   const name = page === "home" ? "Your price watch" : page[0].toUpperCase() + page.slice(1)
   document.querySelector("#greeting").textContent = name
   const toast = notice ? `<div class="notice" role="status">${safe(notice)}</div>` : ""
@@ -52,8 +57,7 @@ function render() {
     const recent = [...store.items].sort((a, b) => b.createdAt - a.createdAt).slice(0, 4)
     const deals = store.items.filter(isDeal).sort((a, b) => dropPercent(b) - dropPercent(a)).slice(0, 3)
     const trackedHere = trackedOnCurrentTab()
-    view.innerHTML = `${toast}<section class="hero glass"><span class="eyebrow">TRACK WHAT YOU LOVE</span><h1>Catch the price drop.</h1><p>Save a product from the page you’re viewing. Droppr will check it every six hours.</p><button id="${trackedHere ? "refresh-page" : "capture"}" class="primary" ${currentTab ? "" : "disabled"}>${trackedHere ? "↻ Refresh this page" : "＋ Track this page"}</button>${currentTab ? `<span class="tab-hint">${safe(new URL(currentTab.url).hostname)}</span>` : `<span class="tab-hint">Open a product page to start</span>`}</section>
-    ${product ? preview() : ""}
+    view.innerHTML = `${toast}${product ? preview() : `<section class="hero glass"><span class="eyebrow">TRACK WHAT YOU LOVE</span><h1>Catch the price drop.</h1><p>Save a product from the page you’re viewing. Droppr will check it every six hours.</p><button id="${trackedHere ? "refresh-page" : "capture"}" class="primary" ${currentTab ? "" : "disabled"}>${trackedHere ? "↻ Refresh this page" : "＋ Track this page"}</button>${currentTab ? `<span class="tab-hint">${safe(new URL(currentTab.url).hostname)}</span>` : `<span class="tab-hint">Open a product page to start</span>`}</section>`}
     <div class="section-title"><h2>Recently added</h2><span>${store.items.length} tracked</span></div>${recent.length ? recent.map(itemCard).join("") : empty("⌁", "Nothing tracked yet", "Open a product page and save it here.")}
     <div class="section-title"><h2>Recently dropped</h2><span>${store.items.filter(isDeal).length} deals</span></div>${deals.length ? deals.map(itemCard).join("") : empty("↘", "No price drops yet", "Your deals will show here as prices fall.")}`
   } else if (page === "lists") {
@@ -71,7 +75,21 @@ function render() {
 }
 
 function preview() {
-  return `<section class="preview glass"><span class="eyebrow">${product.manual ? "ENTER PRODUCT PRICE" : "PRODUCT FOUND"}</span><div class="preview-row">${product.image ? `<img src="${safe(product.image)}" alt="" />` : ""}<div><span>${safe(product.siteName)}</span><strong>${safe(product.name)}</strong><b id="preview-price">${product.price > 0 ? safe(priceText(product.price, product.currency)) : "Enter a price below"}</b></div></div>${product.manual ? `<p class="manual-hint">This store's price could not be read automatically. Enter the current price to save it.</p>` : ""}<div class="preview-controls"><label class="wide-field">Product name<input id="preview-name" type="text" maxlength="180" value="${safe(product.name)}" /></label><label>Current price<input id="preview-price-input" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="179.00" value="${product.price > 0 ? safe(product.price) : ""}" /></label><label>Currency<select id="preview-currency">${currencyOptions(product.currency)}</select></label><label>Regular price (if on sale)<input id="preview-regular-price" type="number" min="0.01" step="0.01" inputmode="decimal" value="${product.comparePrice > product.price ? safe(product.comparePrice) : ""}" /></label><label class="wide-field">Image URL (optional)<input id="preview-image" type="url" value="${safe(product.image || "")}" placeholder="https://…" /></label><label>Save to list<select id="list-select">${store.lists.map((list) => `<option value="${safe(list.id)}">${safe(list.name)}</option>`).join("")}</select></label><label>Alert me on<select id="alert-type"><option value="any">Any drop</option><option value="percent">% drop</option><option value="fixed">Target price</option></select></label><label id="threshold-wrap" hidden>Threshold<input id="threshold" type="number" min="0.01" step="0.01" value="10" /></label></div><button id="save-item" class="primary">Start tracking</button></section>`
+  return `<section class="preview glass">
+    <div class="preview-head"><span class="eyebrow">${product.manual ? "ENTER PRODUCT PRICE" : "PRODUCT FOUND"}</span><button id="cancel-preview" type="button">Cancel</button></div>
+    <div class="preview-row">${product.image ? `<img src="${safe(product.image)}" alt="" />` : ""}<div><span>${safe(product.siteName)}</span><strong>${safe(product.name)}</strong><b id="preview-price">${product.price > 0 ? safe(priceText(product.price, product.currency)) : "Enter a price below"}</b></div></div>
+    ${product.manual ? `<p class="manual-hint">This store's price could not be read automatically. Enter the current price to save it.</p>` : ""}
+    <div class="preview-controls">
+      <label class="wide-field">Product name<input id="preview-name" type="text" maxlength="180" value="${safe(product.name)}" /></label>
+      <label>Current price<input id="preview-price-input" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="179.00" value="${product.price > 0 ? safe(product.price) : ""}" /></label>
+      <label>Currency<select id="preview-currency">${currencyOptions(product.currency)}</select></label>
+      <label>Save to list<select id="list-select">${store.lists.map((list) => `<option value="${safe(list.id)}">${safe(list.name)}</option>`).join("")}</select></label>
+      <label>Alert me on<select id="alert-type"><option value="any">Any drop</option><option value="percent">% drop</option><option value="fixed">Target price</option></select></label>
+      <label id="threshold-wrap" hidden>Threshold<input id="threshold" type="number" min="0.01" step="0.01" value="10" /></label>
+      <details class="advanced-fields"><summary>More options <span>Regular price and image</span></summary><div class="advanced-grid"><label>Regular price (if on sale)<input id="preview-regular-price" type="number" min="0.01" step="0.01" inputmode="decimal" value="${product.comparePrice > product.price ? safe(product.comparePrice) : ""}" /></label><label>Image URL (optional)<input id="preview-image" type="url" value="${safe(product.image || "")}" placeholder="https://…" /></label></div></details>
+    </div>
+    <button id="save-item" class="primary">Start tracking</button>
+  </section>`
 }
 
 function flash(message) { notice = message; render(); setTimeout(() => { if (notice === message) { notice = ""; render() } }, 4000) }
@@ -154,14 +172,20 @@ view.addEventListener("click", async (event) => {
   const button = event.target.closest("button, a[data-open]")
   if (!button) return
   if (button.id === "capture") return capture()
+  if (button.id === "cancel-preview") { product = null; return render() }
   if (button.id === "refresh-page") return refreshCurrentPage()
   if (button.id === "save-item") return saveProduct()
   if (button.dataset.editItem) { editingItemId = editingItemId === button.dataset.editItem ? null : button.dataset.editItem; return render() }
   if (button.id === "back-lists") { selectedList = null; return render() }
   if (button.dataset.list) { selectedList = button.dataset.list; return render() }
   if (button.dataset.remove) {
-    store.items = store.items.filter((item) => item.id !== button.dataset.remove)
-    await saveStore(store); return flash("Item removed.")
+    const item = store.items.find((entry) => entry.id === button.dataset.remove)
+    if (!item) return
+    pendingRemoveId = item.id
+    document.querySelector("#remove-product-name").textContent = item.name
+    removeDialog.showModal()
+    document.querySelector("#cancel-remove").focus()
+    return
   }
   if (button.dataset.open) { event.preventDefault(); if (productUrl(button.dataset.open)) return chrome.tabs.create({ url: button.dataset.open }) }
   if (button.id === "check-now") return runCheck()
@@ -170,6 +194,16 @@ view.addEventListener("click", async (event) => {
     const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "droppr-data.json"; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 5000)
   }
 })
+document.querySelector("#cancel-remove").addEventListener("click", () => removeDialog.close())
+document.querySelector("#confirm-remove").addEventListener("click", async () => {
+  const id = pendingRemoveId
+  removeDialog.close()
+  if (!id) return
+  store.items = store.items.filter((item) => item.id !== id)
+  await saveStore(store)
+  flash("Item removed.")
+})
+removeDialog.addEventListener("close", () => { pendingRemoveId = null })
 view.addEventListener("submit", async (event) => {
   if (event.target.dataset.itemEditor) {
     event.preventDefault()
