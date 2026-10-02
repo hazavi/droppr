@@ -39,8 +39,8 @@ const fixtures = [
   },
   {
     name: "Amazon split DKK price with duplicated accessible amount",
-    html: `<html lang="en-US"><body><main id="centerCol"><div id="title_feature_div"><h1>Philips Sonicare 5950</h1></div><div id="corePrice_feature_div"><span class="a-price priceToPay"><span class="a-offscreen">DKK427.37</span><span aria-hidden="true"><span class="a-price-symbol">DKK</span><span class="a-price-whole">427<span class="a-price-decimal">.</span></span><span class="a-price-fraction">37</span></span></span><span class="a-text-price"><span class="a-offscreen">DKK723.61</span></span></div></main></body></html>`,
-    price: 427.37, comparePrice: 723.61, currency: "DKK",
+    html: `<html lang="en-US"><body><main id="centerCol"><div id="title_feature_div"><h1>Philips Sonicare 5950</h1></div><img id="landingImage" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" data-old-hires="https://images.example.com/sonicare.jpg"><div id="corePrice_feature_div"><span class="a-price priceToPay"><span class="a-offscreen">DKK427.37</span><span aria-hidden="true"><span class="a-price-symbol">DKK</span><span class="a-price-whole">427<span class="a-price-decimal">.</span></span><span class="a-price-fraction">37</span></span></span><span class="a-text-price"><span class="a-offscreen">DKK723.61</span></span></div></main></body></html>`,
+    price: 427.37, comparePrice: 723.61, currency: "DKK", image: "https://images.example.com/sonicare.jpg",
   },
   {
     name: "Magento special and old price",
@@ -71,6 +71,81 @@ const fixtures = [
     name: "Visible price overrides stale JSON-LD",
     html: `<html lang="da-DK"><body><section class="product-info"><h1>Chair</h1><span class="product-price">179,00 kr.</span></section><script type="application/ld+json">{"@type":"Product","offers":{"price":"299","priceCurrency":"DKK"}}</script></body></html>`,
     price: 179, comparePrice: 299, currency: "DKK",
+  },
+  {
+    name: "Visible price beats a cents-based data attribute",
+    html: `<html lang="en-US"><body><section class="product-info"><h1>Jacket</h1><span class="product-price" data-price="7999">$79.99</span></section></body></html>`,
+    price: 79.99, currency: "USD",
+  },
+  {
+    name: "Numeric visible price beats a cents-based data attribute",
+    html: `<html lang="en-US"><body><section class="product-info"><h1>Jacket</h1><span class="product-price" data-price="7999">79.99</span></section></body></html>`,
+    price: 79.99, currency: "USD",
+  },
+  {
+    name: "Price beside a quantity does not use the quantity",
+    html: `<html lang="en-US"><body><section class="product-info"><h1>Pens</h1><span class="product-price">2 items for $49.99</span></section></body></html>`,
+    price: 49.99, currency: "USD",
+  },
+  {
+    name: "A nearby shipping price is ignored",
+    html: `<html lang="en-US"><body><section class="product-info"><h1>Desk</h1><span class="shipping-price">$12.00 shipping</span><span class="product-price">$199.00</span></section></body></html>`,
+    price: 199, currency: "USD",
+  },
+  {
+    name: "A hidden SEO heading does not set the product scope",
+    html: `<html lang="en-US"><body><h1 hidden>Other product</h1><section class="product-info"><h1>Camera</h1><span class="price">$299.00</span></section></body></html>`,
+    price: 299, currency: "USD",
+  },
+  {
+    name: "Lazy gallery image beats a site logo",
+    html: `<html lang="en-US"><head><meta property="og:image" content="https://images.example.com/logo.jpg"></head><body><main><section class="product-info"><h1>Shoes</h1><span class="price">$59.00</span></section><div class="product-gallery"><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" data-src="https://images.example.com/shoes.jpg" width="700" height="700"></div></main></body></html>`,
+    price: 59, currency: "USD", image: "https://images.example.com/shoes.jpg",
+  },
+  {
+    name: "Large product image is found without a main element",
+    html: `<html lang="en-US"><body><img src="https://images.example.com/logo.jpg" alt="Store logo" width="100" height="40"><div><h1>Coat</h1><span class="price">$120.00</span><img data-src="https://images.example.com/coat.jpg" width="600" height="800"></div></body></html>`,
+    price: 120, currency: "USD", image: "https://images.example.com/coat.jpg",
+  },
+  {
+    name: "Ordinary large product image beats a metadata logo",
+    html: `<html lang="en-US"><head><meta property="og:image" content="https://images.example.com/logo.jpg"></head><body><main><h1>Desk</h1><span class="price">$219.00</span><img src="https://images.example.com/desk.jpg" width="800" height="800"></main></body></html>`,
+    price: 219, currency: "USD", image: "https://images.example.com/desk.jpg",
+  },
+  {
+    name: "Zara hero jeans image beats a related sweater thumbnail",
+    html: `<html lang="da-DK"><body><main><section class="product-detail"><div class="product-detail-view"><img class="media-image__image" src="https://static.zara.net/assets/public/jeans.jpg" width="800" height="1000" style="width:800px;height:1000px"></div><div class="product-detail-info"><h1>BOOTCUT FIT LOW RISE JEANS MED SLID</h1><span class="money-amount__main">399,00 DKK</span></div><div class="complete-the-look"><img class="product-image" src="https://static.zara.net/assets/public/sweater.jpg" width="700" height="900" style="width:48px;height:48px"></div></section></main></body></html>`,
+    price: 399, currency: "DKK", image: "https://static.zara.net/assets/public/jeans.jpg",
+  },
+  {
+    name: "MaxGaming Pris class and relative product image source",
+    html: `<html lang="da-DK"><body><main><h1>80HE Ghost ISO + BoW Keycaps</h1><figure class="mz-figure mz-hover-zoom"><img alt="Wooting 80HE Ghost ISO + BoW Keycaps" src="/img/bilder/artiklar/51436.jpg?m=1746629815&w=720" style="width:440px;height:352px"></figure><div id="PrisFalt"><span class="PrisBOLD">1929<span class="PrisBOLDnv"> kr</span></span></div><section class="related"><img class="product-image" src="/img/bilder/artiklar/accessory.jpg" style="width:80px;height:80px"><span class="price">45 kr</span></section></main></body></html>`,
+    price: 1929, currency: "DKK", imagePath: "/img/bilder/artiklar/51436.jpg?m=1746629815&w=720",
+  },
+  {
+    name: "Hidden itemprop price metadata remains readable",
+    html: `<html lang="da-DK"><body><h1>Keyboard</h1><div><meta itemprop="price" content="1929"><meta itemprop="priceCurrency" content="DKK"></div></body></html>`,
+    price: 1929, currency: "DKK",
+  },
+  {
+    name: "Picture source supplies the product image",
+    html: `<html lang="en-US"><body><main><h1>Coat</h1><span class="price">$89.00</span><div class="product-gallery"><picture><source srcset="https://images.example.com/coat-small.jpg 320w, https://images.example.com/coat-large.jpg 900w"><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" width="800" height="800"></picture></div></main></body></html>`,
+    price: 89, currency: "USD", image: "https://images.example.com/coat-large.jpg",
+  },
+  {
+    name: "Product card rendered in an open shadow root",
+    html: `<html lang="en-US"><body><product-detail></product-detail><script>const root = document.querySelector('product-detail').attachShadow({mode:'open'}); root.innerHTML = '<section class="product-info"><h1>Watch</h1><span class="price">$149.00</span><img class="product-image" src="https://images.example.com/watch.jpg" width="600" height="600"></section>';</script></body></html>`,
+    price: 149, currency: "USD", image: "https://images.example.com/watch.jpg",
+  },
+  {
+    name: "Background product media supplies an image",
+    html: `<html lang="en-US"><body><main><h1>Lamp</h1><span class="price">$40.00</span><div class="product-media" style="background-image: url('https://images.example.com/lamp.jpg')"></div></main></body></html>`,
+    price: 40, currency: "USD", image: "https://images.example.com/lamp.jpg",
+  },
+  {
+    name: "Structured product image is a fallback",
+    html: `<html lang="en-US"><body><h1>Table</h1><script type="application/ld+json">{"@type":"Product","image":{"url":"https://images.example.com/table.jpg"},"offers":{"price":"49.95","priceCurrency":"USD"}}</script></body></html>`,
+    price: 49.95, currency: "USD", image: "https://images.example.com/table.jpg",
   },
   {
     name: "Structured data fallback",
@@ -121,7 +196,8 @@ test("product price extraction across store markup", async (t) => {
       await t.test(fixture.name, async () => {
         const profile = await mkdtemp(join(tmpdir(), "droppr-test-"))
         try {
-          const output = await runChrome(`http://127.0.0.1:${server.address().port}/${index}`, profile)
+          const pageUrl = `http://127.0.0.1:${server.address().port}/${index}`
+          const output = await runChrome(pageUrl, profile)
           const encoded = output.match(/<pre id="droppr-result">([^<]+)<\/pre>/)?.[1]
           assert.ok(encoded, `Scraper did not return a result: ${output.slice(-500)}`)
           const result = JSON.parse(Buffer.from(encoded, "base64").toString("utf8"))
@@ -130,6 +206,8 @@ test("product price extraction across store markup", async (t) => {
             assert.equal(result.price, fixture.price, JSON.stringify(result))
             assert.equal(result.comparePrice, fixture.comparePrice, JSON.stringify(result))
             assert.equal(result.currency, fixture.currency, JSON.stringify(result))
+            if (fixture.image) assert.equal(result.image, fixture.image, JSON.stringify(result))
+            if (fixture.imagePath) assert.equal(result.image, new URL(fixture.imagePath, pageUrl).href, JSON.stringify(result))
           }
         } finally { await rm(profile, { recursive: true, force: true }) }
       })

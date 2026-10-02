@@ -1,6 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { applyPriceResult, isDeal, dropPercent } from "../extension/store.js"
+import { applyPriceResult, correctItem, isDeal, dropPercent } from "../extension/store.js"
 
 function item() {
   return { currentPrice: 100, originalPrice: 100, currency: "USD", history: [], alertType: "any", alertValue: 0 }
@@ -40,4 +40,35 @@ test("an unreadable page leaves the last good price intact", () => {
   const result = applyPriceResult(saved, { error: "Price not found" })
   assert.equal(result.ok, false)
   assert.equal(saved.currentPrice, 100)
+})
+
+test("a later successful check fills a missing product image", () => {
+  const saved = item()
+  saved.image = ""
+  applyPriceResult(saved, { price: 100, currency: "USD", currencySource: "explicit", image: "https://images.example.com/product.jpg" })
+  assert.equal(saved.image, "https://images.example.com/product.jpg")
+})
+
+test("a later successful check replaces an incorrect product image", () => {
+  const saved = item()
+  saved.image = "https://images.example.com/sweater.jpg"
+  applyPriceResult(saved, { price: 100, currency: "USD", currencySource: "explicit", image: "https://images.example.com/jeans.jpg" })
+  assert.equal(saved.image, "https://images.example.com/jeans.jpg")
+})
+
+test("a correction replaces a bad price, false deal, missing image, and history", () => {
+  const saved = item()
+  saved.currentPrice = 7999
+  saved.originalPrice = 7999
+  saved.lastError = "Previous check failed"
+  saved.history = [{ price: 7999, at: 1 }]
+  correctItem(saved, { currentPrice: 79.99, originalPrice: 79.99, image: "https://images.example.com/product.jpg" }, 200)
+  assert.equal(saved.currentPrice, 79.99)
+  assert.equal(saved.originalPrice, 79.99)
+  assert.equal(saved.image, "https://images.example.com/product.jpg")
+  assert.equal(saved.lastError, "")
+  assert.deepEqual(saved.history, [{ price: 79.99, at: 200 }])
+  assert.equal(isDeal(saved), false)
+  assert.throws(() => correctItem(saved, { currentPrice: 100, originalPrice: 50, image: "" }), /valid current and regular/)
+  assert.equal(saved.currentPrice, 79.99)
 })

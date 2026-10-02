@@ -1,5 +1,5 @@
 import { extractProduct } from "./scrape.js"
-import { readStore, saveStore, priceText, isDeal, dropPercent, applyPriceResult, DEFAULT_LIST_ID } from "./store.js"
+import { readStore, saveStore, priceText, isDeal, dropPercent, applyPriceResult, correctItem, DEFAULT_LIST_ID } from "./store.js"
 
 const view = document.querySelector("#view")
 const nav = document.querySelector(".dock")
@@ -10,6 +10,7 @@ let selectedList = null
 let product = null
 let currentTab = null
 let notice = ""
+let editingItemId = null
 
 const safe = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char])
 const productUrl = (url) => { try { const parsed = new URL(url); return /^https?:$/.test(parsed.protocol) ? parsed : null } catch { return null } }
@@ -34,7 +35,7 @@ function itemCard(item) {
   const points = prices.map((price, index) => `${Math.round(index * 58 / Math.max(1, prices.length - 1))},${Math.round(24 - (price - low) * 19 / Math.max(0.01, high - low))}`).join(" ")
   return `<article class="item glass">
     <div class="item-image">${item.image ? `<img src="${safe(item.image)}" alt="" />` : "◈"}</div>
-    <div class="item-copy"><span>${safe(item.siteName)}</span><a href="${safe(item.url)}" class="item-name" data-open="${safe(item.url)}">${safe(item.name)}</a><div class="price-row"><strong>${safe(priceText(item.currentPrice, item.currency))}</strong><select class="currency-edit" data-currency-id="${safe(item.id)}" aria-label="Currency for ${safe(item.name)}">${currencyOptions(item.currency)}</select></div><small>${isDeal(item) ? `<b>↓ ${dropPercent(item)}% from saved price</b>` : safe(alertLabel(item))}</small>${item.lastError ? `<small class="check-error" title="${safe(item.lastError)}">Check failed: ${safe(item.lastError)}</small>` : ""}</div>
+    <div class="item-copy"><span>${safe(item.siteName)}</span><a href="${safe(item.url)}" class="item-name" data-open="${safe(item.url)}">${safe(item.name)}</a><div class="price-row"><strong>${safe(priceText(item.currentPrice, item.currency))}</strong><select class="currency-edit" data-currency-id="${safe(item.id)}" aria-label="Currency for ${safe(item.name)}">${currencyOptions(item.currency)}</select><button class="edit-item" data-edit-item="${safe(item.id)}" title="Correct price or image" aria-label="Correct price or image for ${safe(item.name)}">✎</button></div><small>${isDeal(item) ? `<b>↓ ${dropPercent(item)}% from saved price</b>` : safe(alertLabel(item))}</small>${item.lastError ? `<small class="check-error" title="${safe(item.lastError)}">Check failed: ${safe(item.lastError)}</small>` : ""}${editingItemId === item.id ? `<form class="item-editor" data-item-editor="${safe(item.id)}"><label>Current price<input name="currentPrice" type="number" min="0.01" step="0.01" value="${safe(item.currentPrice)}" required /></label><label>Regular price<input name="originalPrice" type="number" min="0.01" step="0.01" value="${safe(item.originalPrice)}" required /></label><label>Image URL<input name="image" type="url" value="${safe(item.image)}" placeholder="https://…" /></label><button type="submit" class="secondary">Save correction</button></form>` : ""}</div>
     ${prices.length > 1 ? `<svg class="sparkline" viewBox="0 0 58 28" aria-label="Price history"><polyline points="${points}" /></svg>` : ""}
     <button class="item-remove" data-remove="${safe(item.id)}" aria-label="Remove ${safe(item.name)}">×</button>
   </article>`
@@ -70,7 +71,7 @@ function render() {
 }
 
 function preview() {
-  return `<section class="preview glass"><span class="eyebrow">${product.manual ? "ENTER PRODUCT PRICE" : "PRODUCT FOUND"}</span><div class="preview-row">${product.image ? `<img src="${safe(product.image)}" alt="" />` : ""}<div><span>${safe(product.siteName)}</span><strong>${safe(product.name)}</strong><b id="preview-price">${product.price > 0 ? safe(priceText(product.price, product.currency)) : "Enter a price below"}</b></div></div>${product.manual ? `<p class="manual-hint">This store's price could not be read automatically. Enter the current price to save it.</p>` : ""}<div class="preview-controls"><label class="wide-field">Product name<input id="preview-name" type="text" maxlength="180" value="${safe(product.name)}" /></label><label>Current price<input id="preview-price-input" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="179.00" value="${product.price > 0 ? safe(product.price) : ""}" /></label><label>Currency<select id="preview-currency">${currencyOptions(product.currency)}</select></label><label>Save to list<select id="list-select">${store.lists.map((list) => `<option value="${safe(list.id)}">${safe(list.name)}</option>`).join("")}</select></label><label>Alert me on<select id="alert-type"><option value="any">Any drop</option><option value="percent">% drop</option><option value="fixed">Target price</option></select></label><label id="threshold-wrap" hidden>Threshold<input id="threshold" type="number" min="0.01" step="0.01" value="10" /></label></div><button id="save-item" class="primary">Start tracking</button></section>`
+  return `<section class="preview glass"><span class="eyebrow">${product.manual ? "ENTER PRODUCT PRICE" : "PRODUCT FOUND"}</span><div class="preview-row">${product.image ? `<img src="${safe(product.image)}" alt="" />` : ""}<div><span>${safe(product.siteName)}</span><strong>${safe(product.name)}</strong><b id="preview-price">${product.price > 0 ? safe(priceText(product.price, product.currency)) : "Enter a price below"}</b></div></div>${product.manual ? `<p class="manual-hint">This store's price could not be read automatically. Enter the current price to save it.</p>` : ""}<div class="preview-controls"><label class="wide-field">Product name<input id="preview-name" type="text" maxlength="180" value="${safe(product.name)}" /></label><label>Current price<input id="preview-price-input" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="179.00" value="${product.price > 0 ? safe(product.price) : ""}" /></label><label>Currency<select id="preview-currency">${currencyOptions(product.currency)}</select></label><label>Regular price (if on sale)<input id="preview-regular-price" type="number" min="0.01" step="0.01" inputmode="decimal" value="${product.comparePrice > product.price ? safe(product.comparePrice) : ""}" /></label><label class="wide-field">Image URL (optional)<input id="preview-image" type="url" value="${safe(product.image || "")}" placeholder="https://…" /></label><label>Save to list<select id="list-select">${store.lists.map((list) => `<option value="${safe(list.id)}">${safe(list.name)}</option>`).join("")}</select></label><label>Alert me on<select id="alert-type"><option value="any">Any drop</option><option value="percent">% drop</option><option value="fixed">Target price</option></select></label><label id="threshold-wrap" hidden>Threshold<input id="threshold" type="number" min="0.01" step="0.01" value="10" /></label></div><button id="save-item" class="primary">Start tracking</button></section>`
 }
 
 function flash(message) { notice = message; render(); setTimeout(() => { if (notice === message) { notice = ""; render() } }, 4000) }
@@ -80,12 +81,24 @@ async function permissionFor(url) {
   return origin ? chrome.permissions.request({ origins: [origin + "/*"] }) : false
 }
 
+async function scrapeCurrentTab() {
+  let best
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const [response] = await chrome.scripting.executeScript({ target: { tabId: currentTab.id }, func: extractProduct })
+    const result = response?.result
+    if (result && !result.error && (!best || result.image || !best.image)) best = result
+    if (best?.image) break
+    if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 500))
+  }
+  return best
+}
+
 async function capture() {
   if (!currentTab?.id) return
   if (!(await permissionFor(currentTab.url))) return flash("Site access is needed for price checks.")
   try {
-    const [result] = await chrome.scripting.executeScript({ target: { tabId: currentTab.id }, func: extractProduct })
-    if (result?.result && !result.result.error) product = { ...result.result, url: currentTab.url }
+    const result = await scrapeCurrentTab()
+    if (result) product = { ...result, url: currentTab.url }
     else product = manualProduct()
     render()
   } catch { product = manualProduct(); render() }
@@ -101,8 +114,7 @@ async function refreshCurrentPage(silent = false) {
   const tracked = trackedOnCurrentTab()
   if (!tracked || !currentTab?.id) return
   try {
-    const [response] = await chrome.scripting.executeScript({ target: { tabId: currentTab.id }, func: extractProduct })
-    const result = response?.result
+    const result = await scrapeCurrentTab()
     store = await readStore()
     const item = store.items.find((entry) => entry.id === tracked.id)
     if (!item) return
@@ -120,12 +132,17 @@ async function saveProduct() {
   if (store.items.some((item) => item.url === product.url)) return flash("This page is already tracked.")
   const name = document.querySelector("#preview-name").value.trim()
   const price = Number(document.querySelector("#preview-price-input").value)
+  const regularInput = document.querySelector("#preview-regular-price").value.trim()
+  const regularPrice = regularInput ? Number(regularInput) : price
+  const image = document.querySelector("#preview-image").value.trim()
   if (!name) return flash("Enter a product name.")
   if (!Number.isFinite(price) || price <= 0) return flash("Enter a valid current price.")
+  if (!Number.isFinite(regularPrice) || regularPrice < price) return flash("Regular price must be at least the current price.")
+  if (image && !productUrl(image)) return flash("Enter a valid image URL.")
   const type = document.querySelector("#alert-type").value
   const value = Number(document.querySelector("#threshold").value)
   if (type !== "any" && !(value > 0)) return flash("Enter a threshold greater than zero.")
-  store.items.push({ ...product, name, price, id: crypto.randomUUID(), listId: document.querySelector("#list-select").value || DEFAULT_LIST_ID, currentPrice: price, originalPrice: Math.max(price, product.comparePrice || 0), alertType: type, alertValue: type === "any" ? 0 : value, createdAt: Date.now(), lastChecked: Date.now(), history: [{ price, at: Date.now() }] })
+  store.items.push({ ...product, name, price, image, id: crypto.randomUUID(), listId: document.querySelector("#list-select").value || DEFAULT_LIST_ID, currentPrice: price, originalPrice: regularPrice, alertType: type, alertValue: type === "any" ? 0 : value, createdAt: Date.now(), lastChecked: Date.now(), history: [{ price, at: Date.now() }] })
   await saveStore(store)
   product = null
   flash("Price tracking started.")
@@ -137,6 +154,7 @@ view.addEventListener("click", async (event) => {
   if (button.id === "capture") return capture()
   if (button.id === "refresh-page") return refreshCurrentPage()
   if (button.id === "save-item") return saveProduct()
+  if (button.dataset.editItem) { editingItemId = editingItemId === button.dataset.editItem ? null : button.dataset.editItem; return render() }
   if (button.id === "back-lists") { selectedList = null; return render() }
   if (button.dataset.list) { selectedList = button.dataset.list; return render() }
   if (button.dataset.remove) {
@@ -151,6 +169,21 @@ view.addEventListener("click", async (event) => {
   }
 })
 view.addEventListener("submit", async (event) => {
+  if (event.target.dataset.itemEditor) {
+    event.preventDefault()
+    const item = store.items.find((entry) => entry.id === event.target.dataset.itemEditor)
+    if (!item) return
+    const values = new FormData(event.target)
+    const image = String(values.get("image") || "").trim()
+    if (image && !productUrl(image)) return flash("Enter a valid image URL.")
+    try {
+      correctItem(item, { currentPrice: Number(values.get("currentPrice")), originalPrice: Number(values.get("originalPrice")), image })
+      await saveStore(store)
+      editingItemId = null
+      flash("Item corrected.")
+    } catch (error) { flash(error.message) }
+    return
+  }
   if (event.target.id !== "new-list") return
   event.preventDefault()
   const name = new FormData(event.target).get("name")?.toString().trim()
