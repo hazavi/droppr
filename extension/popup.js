@@ -101,14 +101,16 @@ async function permissionFor(url) {
 
 async function scrapeCurrentTab() {
   let best
+  let partial
   for (let attempt = 0; attempt < 3; attempt++) {
     const [response] = await chrome.scripting.executeScript({ target: { tabId: currentTab.id }, func: extractProduct })
     const result = response?.result
+    if (result?.image || result?.name) partial = result
     if (result && !result.error && (!best || result.image || !best.image)) best = result
     if (best?.image) break
     if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 500))
   }
-  return best
+  return best || partial
 }
 
 async function capture() {
@@ -116,16 +118,16 @@ async function capture() {
   if (!(await permissionFor(currentTab.url))) return flash("Site access is needed for price checks.")
   try {
     const result = await scrapeCurrentTab()
-    if (result) product = { ...result, url: currentTab.url }
-    else product = manualProduct()
+    if (result && !result.error) product = { ...result, url: currentTab.url }
+    else product = manualProduct(result)
     render()
-  } catch { product = manualProduct(); render() }
+  } catch (error) { product = manualProduct({ error: error?.message || "Could not read this page" }); render() }
 }
 
-function manualProduct() {
+function manualProduct(partial = {}) {
   const url = new URL(currentTab.url)
   const currency = url.hostname.endsWith(".dk") ? "DKK" : url.hostname.endsWith(".no") ? "NOK" : url.hostname.endsWith(".se") ? "SEK" : "USD"
-  return { url: currentTab.url, name: currentTab.title || url.hostname, image: "", price: null, currency, currencySource: "manual", siteName: url.hostname.replace(/^www\./, ""), manual: true }
+  return { url: currentTab.url, name: partial.name || currentTab.title || url.hostname, image: partial.image || "", price: null, currency: partial.currency || currency, currencySource: "manual", siteName: url.hostname.replace(/^www\./, ""), manual: true, captureError: partial.error || "" }
 }
 
 async function refreshCurrentPage(silent = false) {

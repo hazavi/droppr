@@ -119,7 +119,7 @@ const fixtures = [
   },
   {
     name: "MaxGaming Pris class and relative product image source",
-    html: `<html lang="da-DK"><body><main><h1>80HE Ghost ISO + BoW Keycaps</h1><figure class="mz-figure mz-hover-zoom"><img alt="Wooting 80HE Ghost ISO + BoW Keycaps" src="/img/bilder/artiklar/51436.jpg?m=1746629815&w=720" style="width:440px;height:352px"></figure><div id="PrisFalt"><span class="PrisBOLD">1929<span class="PrisBOLDnv"> kr</span></span></div><section class="related"><img class="product-image" src="/img/bilder/artiklar/accessory.jpg" style="width:80px;height:80px"><span class="price">45 kr</span></section></main></body></html>`,
+    html: `<html lang="da-DK"><body><main><span class="price">45 kr</span><h1>80HE Ghost ISO + BoW Keycaps</h1><a id="Zoomer"><figure class="mz-figure mz-hover-zoom"><img alt="Wooting 80HE Ghost ISO + BoW Keycaps" src="/img/bilder/artiklar/51436.jpg?m=1746629815&w=720" style="width:440px;height:352px"></figure></a><div id="PrisFalt"><span class="PrisBOLD">1929<span class="PrisBOLDnv"> kr</span></span><meta itemprop="price" content="1929"><meta itemprop="priceCurrency" content="DKK"></div><section class="related"><img class="product-image" src="/img/bilder/artiklar/accessory.jpg" style="width:80px;height:80px"><span class="price">45 kr</span></section></main></body></html>`,
     price: 1929, currency: "DKK", imagePath: "/img/bilder/artiklar/51436.jpg?m=1746629815&w=720",
   },
   {
@@ -157,6 +157,11 @@ const fixtures = [
     html: `<html><body><h1>Unavailable product</h1></body></html>`,
     error: true,
   },
+  {
+    name: "Image is retained when price is not yet rendered",
+    html: `<html lang="da-DK"><body><h1>Keyboard</h1><a id="Zoomer"><img src="/img/bilder/artiklar/51436.jpg" alt="Keyboard" style="width:440px;height:352px"></a></body></html>`,
+    error: true, imagePath: "/img/bilder/artiklar/51436.jpg",
+  },
 ]
 
 function runChrome(url, profile) {
@@ -187,7 +192,7 @@ test("product price extraction across store markup", async (t) => {
     const fixture = fixtures[index]
     if (!fixture) { response.writeHead(404).end(); return }
     response.setHeader("Content-Type", "text/html; charset=utf-8")
-    const runner = `<pre id="droppr-result"></pre><script type="module">import { extractProduct } from "/scrape.js"; document.querySelector("#droppr-result").textContent = btoa(JSON.stringify(extractProduct()));</script>`
+    const runner = `<pre id="droppr-result"></pre><script type="module">import { extractProduct } from "/scrape.js"; const injected = new Function("return (" + extractProduct.toString() + ")")(); document.querySelector("#droppr-result").textContent = btoa(JSON.stringify(injected()));</script>`
     response.end(fixture.html.replace("</body>", `${runner}</body>`))
   })
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve))
@@ -207,8 +212,8 @@ test("product price extraction across store markup", async (t) => {
             assert.equal(result.comparePrice, fixture.comparePrice, JSON.stringify(result))
             assert.equal(result.currency, fixture.currency, JSON.stringify(result))
             if (fixture.image) assert.equal(result.image, fixture.image, JSON.stringify(result))
-            if (fixture.imagePath) assert.equal(result.image, new URL(fixture.imagePath, pageUrl).href, JSON.stringify(result))
           }
+          if (fixture.imagePath) assert.equal(result.image, new URL(fixture.imagePath, pageUrl).href, JSON.stringify(result))
         } finally { await rm(profile, { recursive: true, force: true }) }
       })
     }

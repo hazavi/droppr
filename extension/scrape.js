@@ -58,6 +58,7 @@ export function extractProduct() {
   const priceSelector = '[itemprop="price"], [data-price], [data-price-amount], [data-product-price], [data-testid*="price"], [class*="price"], [class*="Price"], [class*="pris"], [class*="Pris"], [class*="preis"], [class*="Preis"], [class*="prix"], [class*="Prix"], [class*="precio"], [class*="Precio"], [class*="prezzo"], [class*="Prezzo"], [class*="money-amount"], .a-price .a-offscreen, del, s, ins, del + *, s + *'
   const allPriceNodes = queryAll(priceSelector).slice(0, 400)
   const nodePriceText = (el) => {
+    if (!el) return ""
     const accessible = el.querySelector(".a-offscreen")?.textContent
     const visible = text(el.textContent)
     const labelled = el.getAttribute("aria-label")
@@ -67,6 +68,8 @@ export function extractProduct() {
     if (visible && /^[\d\s.,]+$/.test(visible) && parsePrice(visible) !== null) return visible
     return el.getAttribute("content") || el.getAttribute("data-price") || el.getAttribute("data-price-amount") || el.getAttribute("data-product-price") || visible || labelled
   }
+  const shopPriceNode = queryAll('#PrisFalt .PrisBOLD, #PrisFalt [itemprop="price"][content]')[0]
+  const shopPrice = { value: nodePriceText(shopPriceNode), currency: currencyIn(`${shopPriceNode?.textContent || ""} ${microdata.currency}`), source: "visible" }
   const titleNode = queryAll("h1").find((node) => text(node.innerText) && !node.closest('[hidden], [aria-hidden="true"]') && (typeof getComputedStyle !== "function" || getComputedStyle(node).display !== "none")) || queryAll("h1")[0]
   let priceNodes = allPriceNodes
   // Keep prices in the same product-information region as the heading. This
@@ -119,11 +122,10 @@ export function extractProduct() {
   const distinct = dom.filter((candidate, index, list) => !candidate.old && list.findIndex((other) => !other.old && parsePrice(other.value) === parsePrice(candidate.value)) === index).slice(0, 3)
   const discounted = hasDiscount && distinct.length > 1 ? distinct.reduce((best, candidate) => parsePrice(candidate.value) < parsePrice(best.value) ? candidate : best) : null
   const matchingStructured = primary && dom.find((candidate) => !candidate.old && Math.abs(parsePrice(candidate.value) - parsePrice(primary.value)) < 0.001)
-  const found = visibleCurrent || (visibleOld && regularVisible && parsePrice(regularVisible.value) < parsePrice(visibleOld.value) ? regularVisible : null)
+  const found = (parsePrice(shopPrice.value) !== null ? shopPrice : null) || visibleCurrent || (visibleOld && regularVisible && parsePrice(regularVisible.value) < parsePrice(visibleOld.value) ? regularVisible : null)
     || saleCandidate || discounted || matchingStructured || regularVisible || primary
-  if (!found) return { error: "No product price was found on this page. Try a product page with a visible price." }
-  const currentPrice = parsePrice(found.value)
-  const oldPrices = [salePair?.old, parsePrice(visibleOld?.value), parsePrice(primary?.value), ...(discounted ? distinct.map((candidate) => parsePrice(candidate.value)) : [])].filter((price) => price > currentPrice && price / currentPrice <= 10)
+  const currentPrice = found ? parsePrice(found.value) : null
+  const oldPrices = found ? [salePair?.old, parsePrice(visibleOld?.value), parsePrice(primary?.value), ...(discounted ? distinct.map((candidate) => parsePrice(candidate.value)) : [])].filter((price) => price > currentPrice && price / currentPrice <= 10) : []
   const comparePrice = oldPrices.length ? Math.min(...oldPrices) : undefined
 
   const title = text(product?.name || meta("og:title") || titleNode?.textContent || document.title).replace(/\s+/g, " ")
@@ -141,6 +143,7 @@ export function extractProduct() {
   }
   addImage(meta("og:image") || meta("og:image:url"), 90)
   addImage(meta("twitter:image"), 80)
+  addImage(queryAll('#Zoomer img[src], .mz-figure img[src]')[0]?.getAttribute("src"), 300)
 
   const imageSelectors = '#landingImage, #imgTagWrapperId img, img[itemprop="image"], [data-testid*="product-image"] img, img[data-testid*="product-image"], [class*="product-gallery"] img, img[class*="gallery"] img, img[class*="gallery"], [class*="product-media"] img, [class*="product__media"] img, [class*="product-image"] img, img[class*="product-image"], #Zoomer img, .mz-figure img, figure img, main img, img'
   const titleWords = new Set(title.toLowerCase().match(/[\p{L}\p{N}]{3,}/gu) || [])
@@ -187,15 +190,16 @@ export function extractProduct() {
     if (match) addImage(match[1], 115)
   }
   images.sort((a, b) => b.score - a.score)
-  const localeOverridesUsd = localeCurrency && found.source !== "visible" && found.currency === "USD" && !visibleWithCurrency
-  const currency = localeOverridesUsd ? localeCurrency : found.currency || visibleWithCurrency?.currency || localeCurrency || microdata.currency || structured.currency || openGraph.currency || "USD"
+  const localeOverridesUsd = localeCurrency && found?.source !== "visible" && found?.currency === "USD" && !visibleWithCurrency
+  const currency = localeOverridesUsd ? localeCurrency : found?.currency || visibleWithCurrency?.currency || localeCurrency || microdata.currency || structured.currency || openGraph.currency || "USD"
   return {
+    ...(found ? {} : { error: "No product price was found on this page. Try a product page with a visible price." }),
     name: title || location.hostname,
     image: images[0]?.url || "",
     price: currentPrice,
     comparePrice,
     currency,
-    currencySource: localeOverridesUsd ? "locale" : found.currency || visibleWithCurrency?.currency ? "explicit" : localeCurrency ? "locale" : microdata.currency || structured.currency || openGraph.currency ? "metadata" : "fallback",
+    currencySource: localeOverridesUsd ? "locale" : found?.currency || visibleWithCurrency?.currency ? "explicit" : localeCurrency ? "locale" : microdata.currency || structured.currency || openGraph.currency ? "metadata" : "fallback",
     siteName: location.hostname.replace(/^www\./, ""),
     url: location.href,
   }
