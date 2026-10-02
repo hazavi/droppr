@@ -52,8 +52,7 @@ function render() {
     const recent = [...store.items].sort((a, b) => b.createdAt - a.createdAt).slice(0, 4)
     const deals = store.items.filter(isDeal).sort((a, b) => dropPercent(b) - dropPercent(a)).slice(0, 3)
     const trackedHere = trackedOnCurrentTab()
-    view.innerHTML = `${toast}<section class="hero glass"><span class="eyebrow">TRACK WHAT YOU LOVE</span><h1>Catch the price drop.</h1><p>Save a product from the page you’re viewing. Droppr will check it every six hours.</p><button id="${trackedHere ? "refresh-page" : "capture"}" class="primary" ${currentTab ? "" : "disabled"}>${trackedHere ? "↻ Refresh this page" : "＋ Track this page"}</button>${currentTab ? `<span class="tab-hint">${safe(new URL(currentTab.url).hostname)}</span>` : `<span class="tab-hint">Open a product page to start</span>`}</section>
-    ${product ? preview() : ""}
+    view.innerHTML = `${toast}${product ? preview() : `<section class="hero glass"><span class="eyebrow">TRACK WHAT YOU LOVE</span><h1>Catch the price drop.</h1><p>Save a product from the page you’re viewing. Droppr will check it every six hours.</p><button id="${trackedHere ? "refresh-page" : "capture"}" class="primary" ${currentTab ? "" : "disabled"}>${trackedHere ? "↻ Refresh this page" : "＋ Track this page"}</button>${currentTab ? `<span class="tab-hint">${safe(new URL(currentTab.url).hostname)}</span>` : `<span class="tab-hint">Open a product page to start</span>`}</section>`}
     <div class="section-title"><h2>Recently added</h2><span>${store.items.length} tracked</span></div>${recent.length ? recent.map(itemCard).join("") : empty("⌁", "Nothing tracked yet", "Open a product page and save it here.")}
     <div class="section-title"><h2>Recently dropped</h2><span>${store.items.filter(isDeal).length} deals</span></div>${deals.length ? deals.map(itemCard).join("") : empty("↘", "No price drops yet", "Your deals will show here as prices fall.")}`
   } else if (page === "lists") {
@@ -71,7 +70,21 @@ function render() {
 }
 
 function preview() {
-  return `<section class="preview glass"><span class="eyebrow">${product.manual ? "ENTER PRODUCT PRICE" : "PRODUCT FOUND"}</span><div class="preview-row">${product.image ? `<img src="${safe(product.image)}" alt="" />` : ""}<div><span>${safe(product.siteName)}</span><strong>${safe(product.name)}</strong><b id="preview-price">${product.price > 0 ? safe(priceText(product.price, product.currency)) : "Enter a price below"}</b></div></div>${product.manual ? `<p class="manual-hint">This store's price could not be read automatically. Enter the current price to save it.</p>` : ""}<div class="preview-controls"><label class="wide-field">Product name<input id="preview-name" type="text" maxlength="180" value="${safe(product.name)}" /></label><label>Current price<input id="preview-price-input" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="179.00" value="${product.price > 0 ? safe(product.price) : ""}" /></label><label>Currency<select id="preview-currency">${currencyOptions(product.currency)}</select></label><label>Regular price (if on sale)<input id="preview-regular-price" type="number" min="0.01" step="0.01" inputmode="decimal" value="${product.comparePrice > product.price ? safe(product.comparePrice) : ""}" /></label><label class="wide-field">Image URL (optional)<input id="preview-image" type="url" value="${safe(product.image || "")}" placeholder="https://…" /></label><label>Save to list<select id="list-select">${store.lists.map((list) => `<option value="${safe(list.id)}">${safe(list.name)}</option>`).join("")}</select></label><label>Alert me on<select id="alert-type"><option value="any">Any drop</option><option value="percent">% drop</option><option value="fixed">Target price</option></select></label><label id="threshold-wrap" hidden>Threshold<input id="threshold" type="number" min="0.01" step="0.01" value="10" /></label></div><button id="save-item" class="primary">Start tracking</button></section>`
+  return `<section class="preview glass">
+    <div class="preview-head"><span class="eyebrow">${product.manual ? "ENTER PRODUCT PRICE" : "PRODUCT FOUND"}</span><button id="cancel-preview" type="button">Cancel</button></div>
+    <div class="preview-row">${product.image ? `<img src="${safe(product.image)}" alt="" />` : ""}<div><span>${safe(product.siteName)}</span><strong>${safe(product.name)}</strong><b id="preview-price">${product.price > 0 ? safe(priceText(product.price, product.currency)) : "Enter a price below"}</b></div></div>
+    ${product.manual ? `<p class="manual-hint">This store's price could not be read automatically. Enter the current price to save it.</p>` : ""}
+    <div class="preview-controls">
+      <label class="wide-field">Product name<input id="preview-name" type="text" maxlength="180" value="${safe(product.name)}" /></label>
+      <label>Current price<input id="preview-price-input" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="179.00" value="${product.price > 0 ? safe(product.price) : ""}" /></label>
+      <label>Currency<select id="preview-currency">${currencyOptions(product.currency)}</select></label>
+      <label>Save to list<select id="list-select">${store.lists.map((list) => `<option value="${safe(list.id)}">${safe(list.name)}</option>`).join("")}</select></label>
+      <label>Alert me on<select id="alert-type"><option value="any">Any drop</option><option value="percent">% drop</option><option value="fixed">Target price</option></select></label>
+      <label id="threshold-wrap" hidden>Threshold<input id="threshold" type="number" min="0.01" step="0.01" value="10" /></label>
+      <details class="advanced-fields"><summary>More options <span>Regular price and image</span></summary><div class="advanced-grid"><label>Regular price (if on sale)<input id="preview-regular-price" type="number" min="0.01" step="0.01" inputmode="decimal" value="${product.comparePrice > product.price ? safe(product.comparePrice) : ""}" /></label><label>Image URL (optional)<input id="preview-image" type="url" value="${safe(product.image || "")}" placeholder="https://…" /></label></div></details>
+    </div>
+    <button id="save-item" class="primary">Start tracking</button>
+  </section>`
 }
 
 function flash(message) { notice = message; render(); setTimeout(() => { if (notice === message) { notice = ""; render() } }, 4000) }
@@ -152,6 +165,7 @@ view.addEventListener("click", async (event) => {
   const button = event.target.closest("button, a[data-open]")
   if (!button) return
   if (button.id === "capture") return capture()
+  if (button.id === "cancel-preview") { product = null; return render() }
   if (button.id === "refresh-page") return refreshCurrentPage()
   if (button.id === "save-item") return saveProduct()
   if (button.dataset.editItem) { editingItemId = editingItemId === button.dataset.editItem ? null : button.dataset.editItem; return render() }
