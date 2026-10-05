@@ -81,7 +81,12 @@ test("an unreadable store page can be tracked and removal requires confirmation"
     })
     const encoded = output.match(/<pre id="droppr-result">([^<]+)<\/pre>/)?.[1]
     assert.ok(encoded, `Popup did not return a result: ${output.slice(0, 3000)}`)
-    assert.deepEqual(JSON.parse(Buffer.from(encoded, "base64").toString("utf8")), { price: 427.37, regularPrice: 723.61, currency: "DKK", name: "Toothbrush", image: `http://127.0.0.1:${server.address().port}/icons/droppr-16.png` })
+    assert.deepEqual(JSON.parse(Buffer.from(encoded, "base64").toString("utf8")), {
+      price: 427.37, regularPrice: 723.61, currency: "DKK", name: "Toothbrush",
+      image: `http://127.0.0.1:${server.address().port}/icons/droppr-16.png`,
+      dialogOpened: true, stillTrackedBeforeConfirmation: true,
+      cancelKeptProduct: true, confirmRemovedProduct: true,
+    })
   } finally {
     server.close()
     await rm(profile, { recursive: true, force: true })

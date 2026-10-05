@@ -141,6 +141,10 @@ async function refreshCurrentPage(silent = false) {
     const applied = applyPriceResult(item, result)
     if (!applied.ok) { item.lastError = applied.reason; await saveStore(store); if (!silent) flash(applied.reason); return }
     await saveStore(store)
+    if (applied.alert && store.settings.notifications) {
+      try { await chrome.runtime.sendMessage({ type: "PRICE_DROP", id: item.id }) }
+      catch (error) { console.warn("Droppr notification failed:", error) }
+    }
     if (applied.changed || applied.dealChanged) flash(`Price updated to ${priceText(item.currentPrice, item.currency)}.`)
     else if (!silent) flash("Price is up to date.")
     else render()

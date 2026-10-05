@@ -2,15 +2,19 @@ export const DEFAULT_LIST_ID = "watchlist"
 
 export async function readStore() {
   const { lists, items, settings } = await chrome.storage.local.get(["lists", "items", "settings"])
+  const notificationSettings = { notifications: settings?.notifications !== false }
+  if (settings && Object.keys(settings).some((key) => key !== "notifications")) {
+    await chrome.storage.local.set({ settings: notificationSettings })
+  }
   return {
     lists: Array.isArray(lists) && lists.length ? lists : [{ id: DEFAULT_LIST_ID, name: "My watchlist", createdAt: Date.now() }],
     items: Array.isArray(items) ? items : [],
-    settings: { notifications: true, ...(settings || {}) },
+    settings: notificationSettings,
   }
 }
 
 export async function saveStore(store) {
-  await chrome.storage.local.set(store)
+  await chrome.storage.local.set({ ...store, settings: { notifications: store.settings?.notifications !== false } })
 }
 
 export function priceText(price, currency) {

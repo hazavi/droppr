@@ -39,6 +39,13 @@ async function readInTab(url) {
 }
 
 let checking = false
+async function notifyPriceDrop(item) {
+  await chrome.notifications.create(`droppr-${item.id}-${Date.now()}`, {
+    type: "basic", iconUrl: "icons/droppr.png", title: "Price dropped on Droppr",
+    message: `${item.name} is now ${priceText(item.currentPrice, item.currency)}`,
+  })
+}
+
 async function checkPrices() {
   if (checking) return { busy: true, checked: 0, updated: 0, failed: 0 }
   checking = true
@@ -63,10 +70,7 @@ async function checkPrices() {
         summary.checked++
         if (applied.changed) summary.updated++
         if (store.settings.notifications && applied.alert) {
-          await chrome.notifications.create(`droppr-${current.id}-${Date.now()}`, {
-            type: "basic", iconUrl: "icons/droppr.png", title: "Price dropped on Droppr",
-            message: `${current.name} is now ${priceText(current.currentPrice, current.currency)}`,
-          })
+          await notifyPriceDrop(current)
         }
       } catch (error) {
         failure = error instanceof Error ? error.message : "Could not load product page"
@@ -88,6 +92,14 @@ chrome.alarms.onAlarm.addListener((alarm) => { if (alarm.name === ALARM) void ch
 chrome.runtime.onMessage.addListener((message, _sender, respond) => {
   if (message?.type === "CHECK_PRICES") {
     checkPrices().then(respond).catch((error) => respond({ error: error.message }))
+    return true
+  }
+  if (message?.type === "PRICE_DROP" && typeof message.id === "string") {
+    readStore().then(async (store) => {
+      const item = store.items.find((entry) => entry.id === message.id)
+      if (item && store.settings.notifications) await notifyPriceDrop(item)
+      respond({ ok: true })
+    }).catch((error) => respond({ error: error.message }))
     return true
   }
 })

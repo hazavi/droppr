@@ -1,6 +1,25 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { applyPriceResult, correctItem, isDeal, dropPercent } from "../extension/store.js"
+import { applyPriceResult, correctItem, isDeal, dropPercent, readStore, saveStore } from "../extension/store.js"
+
+test("legacy email settings are removed from saved extension settings", async () => {
+  let saved
+  globalThis.chrome = {
+    storage: { local: {
+      async get() { return { settings: { notifications: false, email: "old@example.com" } } },
+      async set(value) { saved = value },
+    } },
+  }
+  try {
+    const store = await readStore()
+    assert.deepEqual(store.settings, { notifications: false })
+    assert.deepEqual(saved.settings, { notifications: false })
+    await saveStore(store)
+    assert.deepEqual(saved.settings, { notifications: false })
+  } finally {
+    delete globalThis.chrome
+  }
+})
 
 function item() {
   return { currentPrice: 100, originalPrice: 100, currency: "USD", history: [], alertType: "any", alertValue: 0 }
